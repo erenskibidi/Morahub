@@ -1,0 +1,3153 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local VirtualUser = game:GetService("VirtualUser")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
+local GuiService = game:GetService("GuiService")
+
+local LocalPlayer = Players.LocalPlayer
+
+
+local LOGO_URL = "https://i.ibb.co/j9g7RQxf/gaixinh5.png"
+local LOGO_B64 = ""
+local TweenService = game:GetService("TweenService")
+
+local UILib = { Gui = nil, NotifyHolder = nil }
+
+local THEME = {
+	bg = Color3.fromRGB(15, 15, 19),
+	side = Color3.fromRGB(11, 11, 14),
+	card = Color3.fromRGB(24, 24, 30),
+	card2 = Color3.fromRGB(38, 38, 46),
+	text = Color3.fromRGB(235, 235, 240),
+	sub = Color3.fromRGB(135, 135, 148),
+	accent = Color3.fromRGB(205, 30, 50),
+}
+
+local ACCENTS = {
+	Lucifer = Color3.fromRGB(205, 30, 50),
+	Amethyst = Color3.fromRGB(150, 80, 255),
+	Ocean = Color3.fromRGB(40, 140, 255),
+	Green = Color3.fromRGB(40, 200, 110),
+	Gold = Color3.fromRGB(235, 170, 40),
+}
+
+local accentBinders = {}
+local function onAccent(fn)
+	table.insert(accentBinders, fn)
+	fn(THEME.accent)
+end
+local function setAccent(c)
+	THEME.accent = c
+	for _, fn in ipairs(accentBinders) do
+		pcall(fn, c)
+	end
+end
+
+local function safe(fn, ...)
+	if type(fn) ~= "function" then
+		return
+	end
+	local ok, err = pcall(fn, ...)
+	if not ok then
+		warn("[UI] " .. tostring(err))
+	end
+end
+
+local function make(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props) do
+		o[k] = v
+	end
+	if parent then
+		o.Parent = parent
+	end
+	return o
+end
+
+local function round(o, r)
+	make("UICorner", { CornerRadius = UDim.new(0, r or 6) }, o)
+end
+
+local function tween(o, t, props)
+	TweenService:Create(o, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+
+local function isPress(input)
+	return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+end
+
+local function isMove(input)
+	return input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch
+end
+
+local function makeText(parent, text, size, color, font, xalign)
+	return make("TextLabel", {
+		BackgroundTransparency = 1,
+		Text = text,
+		TextSize = size,
+		TextColor3 = color,
+		Font = font or Enum.Font.GothamMedium,
+		TextXAlignment = xalign or Enum.TextXAlignment.Left,
+	}, parent)
+end
+
+local function makeDraggable(handle, target)
+	local dragging, startInput, startPos = false, nil, nil
+	handle.InputBegan:Connect(function(input)
+		if isPress(input) then
+			dragging = true
+			startInput = input.Position
+			startPos = target.Position
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and isMove(input) then
+			local d = input.Position - startInput
+			target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if isPress(input) then
+			dragging = false
+		end
+	end)
+end
+
+local function bindDrag(hit, onAlpha)
+	local active = false
+	local function update(x)
+		local a = math.clamp((x - hit.AbsolutePosition.X) / math.max(hit.AbsoluteSize.X, 1), 0, 1)
+		onAlpha(a)
+	end
+	hit.InputBegan:Connect(function(input)
+		if isPress(input) then
+			active = true
+			update(input.Position.X)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if active and isMove(input) then
+			update(input.Position.X)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if isPress(input) then
+			active = false
+		end
+	end)
+end
+
+local function screenPos(input)
+	if input.UserInputType == Enum.UserInputType.Touch then
+		local inset = GuiService:GetGuiInset()
+		return Vector2.new(input.Position.X, input.Position.Y + inset.Y)
+	end
+	return UserInputService:GetMouseLocation()
+end
+
+local function bindDragXY(hit, onAlpha)
+	local active = false
+	local function update(input)
+		local pos = screenPos(input)
+		local ax = math.clamp((pos.X - hit.AbsolutePosition.X) / math.max(hit.AbsoluteSize.X, 1), 0, 1)
+		local ay = math.clamp((pos.Y - hit.AbsolutePosition.Y) / math.max(hit.AbsoluteSize.Y, 1), 0, 1)
+		onAlpha(ax, ay)
+	end
+	hit.InputBegan:Connect(function(input)
+		if isPress(input) then
+			active = true
+			update(input)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if active and isMove(input) then
+			update(input)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if isPress(input) then
+			active = false
+		end
+	end)
+end
+
+-- base64 (dùng hàm của executor nếu có, không thì tự giải mã)
+local B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local function b64decode(data)
+	if crypt and crypt.base64decode then
+		local ok, res = pcall(crypt.base64decode, data)
+		if ok and res then
+			return res
+		end
+	end
+	if base64_decode then
+		local ok, res = pcall(base64_decode, data)
+		if ok and res then
+			return res
+		end
+	end
+	if base64decode then
+		local ok, res = pcall(base64decode, data)
+		if ok and res then
+			return res
+		end
+	end
+	data = data:gsub("[^" .. B64_CHARS .. "=]", "")
+	return (data:gsub(".", function(x)
+		if x == "=" then
+			return ""
+		end
+		local r, f = "", (B64_CHARS:find(x, 1, true) - 1)
+		for i = 6, 1, -1 do
+			r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and "1" or "0")
+		end
+		return r
+	end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
+		if #x ~= 8 then
+			return ""
+		end
+		local c = 0
+		for i = 1, 8 do
+			c = c + (x:sub(i, i) == "1" and 2 ^ (8 - i) or 0)
+		end
+		return string.char(c)
+	end))
+end
+
+local logoCache = nil
+local function loadLogo()
+	if logoCache then
+		return logoCache
+	end
+	local ok, asset = pcall(function()
+		local data
+		if LOGO_URL ~= "" then
+			data = game:HttpGet(LOGO_URL)
+		else
+			data = b64decode(LOGO_B64)
+		end
+		writefile("lucifer_logo.jpg", data)
+		return getcustomasset("lucifer_logo.jpg")
+	end)
+	if ok and asset then
+		logoCache = asset
+		return asset
+	end
+	return ""
+end
+
+-- ---------- Tab ----------
+local TabMethods = {}
+TabMethods.__index = TabMethods
+
+local function newCard(tab, height)
+	tab.n = (tab.n or 0) + 1
+	local f = make("Frame", {
+		BackgroundColor3 = THEME.card,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, height),
+		LayoutOrder = tab.n,
+		ClipsDescendants = true,
+	}, tab.Page)
+	round(f, 6)
+	return f
+end
+
+function TabMethods:CreateSection(name)
+	self.n = (self.n or 0) + 1
+	local holder = make("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 26),
+		LayoutOrder = self.n,
+	}, self.Page)
+	local t = makeText(holder, name, 12, THEME.accent, Enum.Font.GothamBold)
+	t.Size = UDim2.new(1, 0, 1, 0)
+	t.Position = UDim2.new(0, 2, 0, 4)
+	onAccent(function(c)
+		t.TextColor3 = c
+	end)
+end
+
+function TabMethods:CreateParagraph(opt)
+	self.n = (self.n or 0) + 1
+	local c = make("Frame", {
+		BackgroundColor3 = THEME.card,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = self.n,
+	}, self.Page)
+	round(c, 6)
+	make("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, c)
+	make("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder }, c)
+	local title = makeText(c, opt.Title or "", 13, THEME.text, Enum.Font.GothamBold)
+	title.Size = UDim2.new(1, 0, 0, 16)
+	title.LayoutOrder = 1
+	local body = makeText(c, opt.Content or "", 12, THEME.sub, Enum.Font.Gotham)
+	body.Size = UDim2.new(1, 0, 0, 0)
+	body.AutomaticSize = Enum.AutomaticSize.Y
+	body.TextWrapped = true
+	body.LayoutOrder = 2
+end
+
+function TabMethods:CreateToggle(opt)
+	local value = opt.CurrentValue and true or false
+	local c = newCard(self, 38)
+	local name = makeText(c, opt.Name, 13, THEME.text)
+	name.Position = UDim2.new(0, 12, 0, 0)
+	name.Size = UDim2.new(1, -70, 1, 0)
+
+	local sw = make("TextButton", {
+		Text = "",
+		AutoButtonColor = false,
+		Size = UDim2.fromOffset(38, 20),
+		Position = UDim2.new(1, -50, 0.5, -10),
+		BackgroundColor3 = THEME.card2,
+		BorderSizePixel = 0,
+	}, c)
+	round(sw, 10)
+	local knob = make("Frame", {
+		Size = UDim2.fromOffset(14, 14),
+		Position = UDim2.new(0, 3, 0.5, -7),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+	}, sw)
+	round(knob, 7)
+
+	local function render(animate)
+		local pos = value and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+		local col = value and THEME.accent or THEME.card2
+		if animate then
+			tween(knob, 0.15, { Position = pos })
+			tween(sw, 0.15, { BackgroundColor3 = col })
+		else
+			knob.Position = pos
+			sw.BackgroundColor3 = col
+		end
+	end
+	render(false)
+	onAccent(function()
+		render(false)
+	end)
+
+	sw.MouseButton1Click:Connect(function()
+		value = not value
+		render(true)
+		safe(opt.Callback, value)
+	end)
+
+	local obj = {}
+	function obj:Set(v)
+		value = v and true or false
+		render(true)
+		safe(opt.Callback, value)
+	end
+	task.spawn(safe, opt.Callback, value)
+	return obj
+end
+
+function TabMethods:CreateSlider(opt)
+	local min, max = opt.Range[1], opt.Range[2]
+	local inc = opt.Increment or 1
+	local value = math.clamp(opt.CurrentValue or min, min, max)
+	local c = newCard(self, 52)
+
+	local name = makeText(c, opt.Name, 13, THEME.text)
+	name.Position = UDim2.new(0, 12, 0, 6)
+	name.Size = UDim2.new(1, -120, 0, 18)
+
+	local valLabel = makeText(c, "", 12, THEME.sub, Enum.Font.GothamMedium, Enum.TextXAlignment.Right)
+	valLabel.Position = UDim2.new(1, -112, 0, 6)
+	valLabel.Size = UDim2.new(0, 100, 0, 18)
+
+	local hit = make("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 12, 0, 28),
+		Size = UDim2.new(1, -24, 0, 20),
+	}, c)
+	local bar = make("Frame", {
+		BackgroundColor3 = THEME.card2,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 0.5, -3),
+		Size = UDim2.new(1, 0, 0, 6),
+	}, hit)
+	round(bar, 3)
+	local fill = make("Frame", { BackgroundColor3 = THEME.accent, BorderSizePixel = 0, Size = UDim2.new(0, 0, 1, 0) }, bar)
+	round(fill, 3)
+	onAccent(function(col)
+		fill.BackgroundColor3 = col
+	end)
+
+	local function render()
+		local a = (max > min) and (value - min) / (max - min) or 0
+		fill.Size = UDim2.new(a, 0, 1, 0)
+		valLabel.Text = tostring(value) .. (opt.Suffix and (" " .. opt.Suffix) or "")
+	end
+	render()
+
+	bindDrag(hit, function(a)
+		local raw = min + a * (max - min)
+		local v = min + math.floor((raw - min) / inc + 0.5) * inc
+		v = math.clamp(v, min, max)
+		v = tonumber(string.format("%.3f", v))
+		if v ~= value then
+			value = v
+			render()
+			safe(opt.Callback, value)
+		end
+	end)
+
+	local obj = {}
+	function obj:Set(v)
+		value = math.clamp(v, min, max)
+		render()
+		safe(opt.Callback, value)
+	end
+	task.spawn(safe, opt.Callback, value)
+	return obj
+end
+
+function TabMethods:CreateDropdown(opt)
+	local options = opt.Options or {}
+	local current = opt.CurrentOption
+	if type(current) == "table" then
+		current = current[1]
+	end
+	current = current or options[1]
+
+	local headH = 38
+	local listH = #options * 28 + 8
+	local c = newCard(self, headH)
+
+	local head = make("TextButton", {
+		Text = "",
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, headH),
+	}, c)
+	local name = makeText(head, opt.Name, 13, THEME.text)
+	name.Position = UDim2.new(0, 12, 0, 0)
+	name.Size = UDim2.new(0.5, -12, 1, 0)
+	local sel = makeText(head, tostring(current) .. "  ▾", 12, THEME.accent, Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+	sel.Position = UDim2.new(0.5, 0, 0, 0)
+	sel.Size = UDim2.new(0.5, -12, 1, 0)
+	onAccent(function(col)
+		sel.TextColor3 = col
+	end)
+
+	local list = make("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 6, 0, headH + 2),
+		Size = UDim2.new(1, -12, 0, listH - 4),
+	}, c)
+	make("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, list)
+
+	local open = false
+	head.MouseButton1Click:Connect(function()
+		open = not open
+		tween(c, 0.18, { Size = UDim2.new(1, 0, 0, open and (headH + listH) or headH) })
+	end)
+
+	for i, optName in ipairs(options) do
+		local b = make("TextButton", {
+			Text = tostring(optName),
+			AutoButtonColor = false,
+			BackgroundColor3 = THEME.card2,
+			BorderSizePixel = 0,
+			Font = Enum.Font.Gotham,
+			TextSize = 12,
+			TextColor3 = THEME.text,
+			Size = UDim2.new(1, 0, 0, 26),
+			LayoutOrder = i,
+		}, list)
+		round(b, 5)
+		b.MouseButton1Click:Connect(function()
+			current = optName
+			sel.Text = tostring(current) .. "  ▾"
+			open = false
+			tween(c, 0.18, { Size = UDim2.new(1, 0, 0, headH) })
+			safe(opt.Callback, { current })
+		end)
+	end
+
+	task.spawn(safe, opt.Callback, { current })
+end
+
+function TabMethods:CreateColorPicker(opt)
+	local color = opt.Color or Color3.new(1, 1, 1)
+	local h, sat, val = Color3.toHSV(color)
+
+	local headH = 38
+	local svH = 110
+	local panelH = 8 + svH + 8 + 22 + 10
+	local c = newCard(self, headH)
+
+	local head = make("TextButton", {
+		Text = "",
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, headH),
+	}, c)
+	local name = makeText(head, opt.Name, 13, THEME.text)
+	name.Position = UDim2.new(0, 12, 0, 0)
+	name.Size = UDim2.new(1, -70, 1, 0)
+	local preview = make("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Size = UDim2.fromOffset(30, 16),
+		Position = UDim2.new(1, -42, 0.5, -8),
+	}, head)
+	round(preview, 4)
+
+	local open = false
+	head.MouseButton1Click:Connect(function()
+		open = not open
+		tween(c, 0.18, { Size = UDim2.new(1, 0, 0, open and (headH + panelH) or headH) })
+	end)
+
+	-- Ô chọn độ đậm / độ sáng
+	local svBox = make("Frame", {
+		BackgroundColor3 = Color3.fromHSV(h, 1, 1),
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 12, 0, headH + 8),
+		Size = UDim2.new(1, -52, 0, svH),
+		ClipsDescendants = true,
+	}, c)
+	round(svBox, 4)
+	local white = make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0) }, svBox)
+	make("UIGradient", {
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
+	}, white)
+	local black = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0) }, svBox)
+	make("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) }),
+	}, black)
+	local svKnob = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(12, 12),
+	}, svBox)
+	round(svKnob, 6)
+	make("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2 }, svKnob)
+	local svHit = make("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), ZIndex = 5 }, svBox)
+
+	-- Thanh chọn màu (hue)
+	local hueBar = make("Frame", {
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+		Position = UDim2.new(1, -32, 0, headH + 8),
+		Size = UDim2.fromOffset(20, svH),
+	}, c)
+	round(hueBar, 4)
+	make("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),
+			ColorSequenceKeypoint.new(1 / 6, Color3.fromHSV(1 / 6, 1, 1)),
+			ColorSequenceKeypoint.new(2 / 6, Color3.fromHSV(2 / 6, 1, 1)),
+			ColorSequenceKeypoint.new(3 / 6, Color3.fromHSV(3 / 6, 1, 1)),
+			ColorSequenceKeypoint.new(4 / 6, Color3.fromHSV(4 / 6, 1, 1)),
+			ColorSequenceKeypoint.new(5 / 6, Color3.fromHSV(5 / 6, 1, 1)),
+			ColorSequenceKeypoint.new(1, Color3.fromHSV(0, 1, 1)),
+		}),
+	}, hueBar)
+	local hueKnob = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 4, 0, 6),
+	}, hueBar)
+	round(hueKnob, 3)
+	make("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2 }, hueKnob)
+	local hueHit = make("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), ZIndex = 5 }, hueBar)
+
+	local function render()
+		color = Color3.fromHSV(h, sat, val)
+		preview.BackgroundColor3 = color
+		svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+		svKnob.Position = UDim2.new(sat, 0, 1 - val, 0)
+		hueKnob.Position = UDim2.new(0.5, 0, h, 0)
+	end
+
+	bindDragXY(svHit, function(ax, ay)
+		sat = ax
+		val = 1 - ay
+		render()
+		safe(opt.Callback, color)
+	end)
+	bindDragXY(hueHit, function(_, ay)
+		h = math.min(ay, 0.999)
+		render()
+		safe(opt.Callback, color)
+	end)
+
+	-- Màu có sẵn
+	local presets = {
+		Color3.fromRGB(255, 60, 60),
+		Color3.fromRGB(255, 140, 40),
+		Color3.fromRGB(255, 220, 50),
+		Color3.fromRGB(60, 230, 90),
+		Color3.fromRGB(0, 255, 255),
+		Color3.fromRGB(60, 130, 255),
+		Color3.fromRGB(160, 90, 255),
+		Color3.fromRGB(255, 100, 200),
+		Color3.fromRGB(255, 255, 255),
+	}
+	local row = make("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 12, 0, headH + 8 + svH + 8),
+		Size = UDim2.new(1, -24, 0, 22),
+	}, c)
+	make("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, row)
+	for i, pc in ipairs(presets) do
+		local b = make("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundColor3 = pc,
+			BorderSizePixel = 0,
+			Size = UDim2.fromOffset(24, 22),
+			LayoutOrder = i,
+		}, row)
+		round(b, 5)
+		b.MouseButton1Click:Connect(function()
+			h, sat, val = Color3.toHSV(pc)
+			render()
+			safe(opt.Callback, color)
+		end)
+	end
+
+	render()
+	task.spawn(safe, opt.Callback, color)
+end
+
+function TabMethods:CreateButton(opt)
+	local c = newCard(self, 38)
+	local b = make("TextButton", {
+		Text = opt.Name,
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamMedium,
+		TextSize = 13,
+		TextColor3 = THEME.text,
+		Size = UDim2.new(1, 0, 1, 0),
+	}, c)
+	b.MouseButton1Click:Connect(function()
+		safe(opt.Callback)
+	end)
+end
+
+-- ---------- Notify ----------
+function UILib:Notify(opt)
+	if not self.NotifyHolder then
+		return
+	end
+	local f = make("Frame", {
+		BackgroundColor3 = THEME.card,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+	}, self.NotifyHolder)
+	round(f, 8)
+	local st = make("UIStroke", { Color = THEME.accent, Thickness = 1, Transparency = 0.4 }, f)
+	make("UIPadding", { PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, f)
+	make("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, f)
+	local t = makeText(f, opt.Title or "", 13, THEME.accent, Enum.Font.GothamBold)
+	t.Size = UDim2.new(1, 0, 0, 16)
+	t.LayoutOrder = 1
+	local b = makeText(f, opt.Content or "", 12, THEME.text, Enum.Font.Gotham)
+	b.Size = UDim2.new(1, 0, 0, 0)
+	b.AutomaticSize = Enum.AutomaticSize.Y
+	b.TextWrapped = true
+	b.LayoutOrder = 2
+	task.delay(opt.Duration or 5, function()
+		pcall(function()
+			f:Destroy()
+		end)
+	end)
+end
+
+-- Nhập key: chạy ngay đầu script, chưa đúng key thì các phần bên dưới KHÔNG được nạp
+function UILib:CheckKey(ks)
+	local parent = CoreGui
+	pcall(function()
+		if gethui then
+			parent = gethui()
+		end
+	end)
+	local gui = make("ScreenGui", {
+		Name = "LuciferKey",
+		ResetOnSpawn = false,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		DisplayOrder = 1000,
+		IgnoreGuiInset = true,
+	})
+	pcall(function()
+		if syn and syn.protect_gui then
+			syn.protect_gui(gui)
+		end
+	end)
+	gui.Parent = parent
+	local logoAsset = loadLogo()
+
+	local keys = ks.Key or {}
+	local function valid(k)
+		for _, v in ipairs(keys) do
+			if v == k then
+				return true
+			end
+		end
+		return false
+	end
+
+	local saved
+	pcall(function()
+		if ks.SaveKey and isfile and isfile((ks.FileName or "LuciferKey") .. ".txt") then
+			saved = readfile((ks.FileName or "LuciferKey") .. ".txt")
+		end
+	end)
+
+	if not (saved and valid(saved)) then
+		local passed = false
+		local gate = make("Frame", {
+			Size = UDim2.fromOffset(340, 270),
+			Position = UDim2.new(0.5, -170, 0.5, -135),
+			BackgroundColor3 = THEME.bg,
+			BorderSizePixel = 0,
+		}, gui)
+		round(gate, 12)
+		local gs = make("UIStroke", { Color = THEME.accent, Thickness = 1, Transparency = 0.4 }, gate)
+		onAccent(function(col)
+			gs.Color = col
+		end)
+
+		local img = make("ImageLabel", {
+			BackgroundColor3 = THEME.side,
+			Image = logoAsset,
+			ScaleType = Enum.ScaleType.Crop,
+			Size = UDim2.fromOffset(84, 84),
+			Position = UDim2.new(0.5, -42, 0, 18),
+		}, gate)
+		round(img, 42)
+
+		local title = makeText(gate, ks.Title or "Key", 18, THEME.text, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+		title.Position = UDim2.new(0, 0, 0, 110)
+		title.Size = UDim2.new(1, 0, 0, 24)
+		local note = makeText(gate, ks.Note or "", 12, THEME.sub, Enum.Font.Gotham, Enum.TextXAlignment.Center)
+		note.Position = UDim2.new(0, 16, 0, 136)
+		note.Size = UDim2.new(1, -32, 0, 30)
+		note.TextWrapped = true
+
+		local box = make("TextBox", {
+			BackgroundColor3 = THEME.card,
+			BorderSizePixel = 0,
+			PlaceholderText = "Nhập key...",
+			PlaceholderColor3 = THEME.sub,
+			Text = "",
+			TextColor3 = THEME.text,
+			Font = Enum.Font.Gotham,
+			TextSize = 13,
+			ClearTextOnFocus = false,
+			Size = UDim2.new(1, -48, 0, 34),
+			Position = UDim2.new(0, 24, 0, 174),
+		}, gate)
+		round(box, 6)
+
+		local err = makeText(gate, "", 12, Color3.fromRGB(255, 90, 90), Enum.Font.Gotham, Enum.TextXAlignment.Center)
+		err.Position = UDim2.new(0, 0, 0, 212)
+		err.Size = UDim2.new(1, 0, 0, 16)
+
+		local ok = make("TextButton", {
+			Text = "Xác nhận",
+			AutoButtonColor = false,
+			BackgroundColor3 = THEME.accent,
+			BorderSizePixel = 0,
+			Font = Enum.Font.GothamBold,
+			TextSize = 13,
+			TextColor3 = Color3.new(1, 1, 1),
+			Size = UDim2.new(1, -48, 0, 32),
+			Position = UDim2.new(0, 24, 0, 230),
+		}, gate)
+		round(ok, 6)
+
+		local function submit()
+			local k = box.Text
+			if valid(k) then
+				pcall(function()
+					if ks.SaveKey and writefile then
+						writefile((ks.FileName or "LuciferKey") .. ".txt", k)
+					end
+				end)
+				passed = true
+			else
+				err.Text = "Key sai, thử lại."
+			end
+		end
+		ok.MouseButton1Click:Connect(submit)
+		box.FocusLost:Connect(function(enter)
+			if enter then
+				submit()
+			end
+		end)
+		makeDraggable(gate, gate)
+
+		repeat
+			task.wait(0.1)
+		until passed
+		gate:Destroy()
+	end
+
+	gui:Destroy()
+end
+
+-- ---------- Window ----------
+function UILib:CreateWindow(cfg)
+	local parent = CoreGui
+	pcall(function()
+		if gethui then
+			parent = gethui()
+		end
+	end)
+
+	local gui = make("ScreenGui", {
+		Name = "LuciferHub",
+		ResetOnSpawn = false,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		DisplayOrder = 999,
+		IgnoreGuiInset = true,
+	})
+	pcall(function()
+		if syn and syn.protect_gui then
+			syn.protect_gui(gui)
+		end
+	end)
+	gui.Parent = parent
+	self.Gui = gui
+
+	local logoAsset = loadLogo()
+
+	-- Thông báo
+	local nh = make("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -16, 1, -16),
+		Size = UDim2.fromOffset(270, 300),
+	}, gui)
+	make("UIListLayout", { Padding = UDim.new(0, 6), VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder }, nh)
+	self.NotifyHolder = nh
+
+	-- Cửa sổ chính
+	local main = make("Frame", {
+		Name = "Main",
+		Size = UDim2.fromOffset(660, 420),
+		Position = UDim2.new(0.5, -330, 0.5, -210),
+		BackgroundColor3 = THEME.bg,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+	}, gui)
+	round(main, 10)
+	local mainStroke = make("UIStroke", { Color = THEME.accent, Thickness = 1, Transparency = 0.55 }, main)
+	onAccent(function(col)
+		mainStroke.Color = col
+	end)
+
+	-- Sidebar trái
+	local sidebar = make("Frame", {
+		Size = UDim2.new(0, 180, 1, 0),
+		BackgroundColor3 = THEME.side,
+		BorderSizePixel = 0,
+	}, main)
+
+	local logoFrame = make("Frame", {
+		Size = UDim2.new(1, 0, 0, 135),
+		BackgroundColor3 = THEME.side,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+	}, sidebar)
+	make("ImageLabel", {
+		BackgroundTransparency = 1,
+		Image = logoAsset,
+		ScaleType = Enum.ScaleType.Crop,
+		Size = UDim2.new(1, 0, 1, 0),
+	}, logoFrame)
+	local fade = make("Frame", {
+		BackgroundColor3 = THEME.side,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 70),
+		Position = UDim2.new(0, 0, 1, -70),
+	}, logoFrame)
+	make("UIGradient", {
+		Rotation = 90,
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		}),
+	}, fade)
+
+	local hubTitle = makeText(logoFrame, cfg.Name or "Hub", 18, THEME.text, Enum.Font.GothamBlack, Enum.TextXAlignment.Center)
+	hubTitle.Position = UDim2.new(0, 0, 1, -42)
+	hubTitle.Size = UDim2.new(1, 0, 0, 22)
+	local hubSub = makeText(logoFrame, cfg.LoadingSubtitle or "", 11, THEME.accent, Enum.Font.GothamMedium, Enum.TextXAlignment.Center)
+	hubSub.Position = UDim2.new(0, 0, 1, -22)
+	hubSub.Size = UDim2.new(1, 0, 0, 16)
+	onAccent(function(col)
+		hubSub.TextColor3 = col
+	end)
+
+	local tabList = make("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 0, 142),
+		Size = UDim2.new(1, 0, 1, -142),
+		ScrollBarThickness = 0,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, sidebar)
+	make("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tabList)
+	make("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), PaddingTop = UDim.new(0, 4) }, tabList)
+
+	-- Vùng nội dung bên phải
+	local content = make("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 180, 0, 0),
+		Size = UDim2.new(1, -180, 1, 0),
+	}, main)
+
+	local topbar = make("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 44),
+	}, content)
+	local pageTitle = makeText(topbar, "", 15, THEME.text, Enum.Font.GothamBold)
+	pageTitle.Position = UDim2.new(0, 16, 0, 0)
+	pageTitle.Size = UDim2.new(1, -60, 1, 0)
+
+	local close = make("TextButton", {
+		Text = "—",
+		AutoButtonColor = false,
+		BackgroundColor3 = THEME.card,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+		TextColor3 = THEME.sub,
+		Size = UDim2.fromOffset(28, 24),
+		Position = UDim2.new(1, -40, 0, 10),
+	}, topbar)
+	round(close, 6)
+	close.MouseButton1Click:Connect(function()
+		gui.Enabled = false
+	end)
+
+	local pages = make("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, 0, 0, 44),
+		Size = UDim2.new(1, 0, 1, -44),
+	}, content)
+
+	makeDraggable(logoFrame, main)
+	makeDraggable(topbar, main)
+
+	local tabs = {}
+	local order = 0
+
+	local function select(entry)
+		for _, t in ipairs(tabs) do
+			local on = (t == entry)
+			t.page.Visible = on
+			t.bar.Visible = on
+			t.btn.BackgroundTransparency = on and 0 or 1
+			t.btn.TextColor3 = on and THEME.text or THEME.sub
+		end
+		pageTitle.Text = entry.name
+	end
+
+	local window = {}
+
+	function window:CreateTab(name, icon)
+		order = order + 1
+		local btn = make("TextButton", {
+			Text = "   " .. name,
+			AutoButtonColor = false,
+			BackgroundColor3 = THEME.card,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Font = Enum.Font.GothamMedium,
+			TextSize = 13,
+			TextColor3 = THEME.sub,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Size = UDim2.new(1, 0, 0, 34),
+			LayoutOrder = order,
+		}, tabList)
+		round(btn, 6)
+		local bar = make("Frame", {
+			BackgroundColor3 = THEME.accent,
+			BorderSizePixel = 0,
+			Size = UDim2.new(0, 3, 0, 18),
+			Position = UDim2.new(0, 0, 0.5, -9),
+			Visible = false,
+		}, btn)
+		round(bar, 2)
+		onAccent(function(col)
+			bar.BackgroundColor3 = col
+		end)
+
+		local page = make("ScrollingFrame", {
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 1, 0),
+			ScrollBarThickness = 3,
+			ScrollBarImageColor3 = THEME.accent,
+			CanvasSize = UDim2.new(0, 0, 0, 0),
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			Visible = false,
+		}, pages)
+		onAccent(function(col)
+			page.ScrollBarImageColor3 = col
+		end)
+		make("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, page)
+		make("UIPadding", {
+			PaddingLeft = UDim.new(0, 14),
+			PaddingRight = UDim.new(0, 16),
+			PaddingTop = UDim.new(0, 2),
+			PaddingBottom = UDim.new(0, 14),
+		}, page)
+
+		local entry = { name = name, btn = btn, bar = bar, page = page }
+		table.insert(tabs, entry)
+		btn.MouseButton1Click:Connect(function()
+			select(entry)
+		end)
+		if #tabs == 1 then
+			select(entry)
+		end
+
+		return setmetatable({ Page = page, n = 0 }, TabMethods)
+	end
+
+	function window.ModifyTheme(arg)
+		if type(arg) == "string" then
+			local c = ACCENTS[arg]
+			if c then
+				setAccent(c)
+			end
+		elseif type(arg) == "table" then
+			if typeof(arg.ToggleEnabled) == "Color3" then
+				setAccent(arg.ToggleEnabled)
+			end
+			if typeof(arg.Background) == "Color3" then
+				main.BackgroundColor3 = arg.Background
+			end
+		end
+	end
+
+	return window
+end
+
+
+UILib:CheckKey({
+	Title = "Xác Thực Key",
+	Note = "Nhập key để sử dụng",
+	FileName = "LuciferKeyStore",
+	SaveKey = false, -- false = lần nào chạy cũng phải nhập key; đổi true để nhớ key
+	Key = { "lucifer" },
+})
+
+local CONFIG = {
+	HoldTime = 6,
+	Range = 200,
+	Cooldown = 1,
+	BlacklistTime = 45,
+	VoidY = -200,
+	StandOff = 2.5,
+	TravelSpeed = 45,
+	ArcHeight = 8,
+	ShortDistance = 12,
+	ArriveWait = 0.3,
+	MaxStuckFrames = 10,
+	AntiAFKInterval = 40,
+	CamDistance = 7,
+	CamMinDistance = 0.6,
+	CamHeight = 1.2,
+	MenuKey = Enum.KeyCode.RightShift,
+}
+
+local state = {
+	running = false,
+	holdingE = false,
+	menuVisible = true,
+	antiAFK = true,
+	idleConn = nil,
+	origMinZoom = nil,
+	camLocked = false,
+	focusPos = nil,
+	invisible = false,
+	fpsBoosted = false,
+	showRange = false,
+	antiToyBox = true,
+	blacklist = setmetatable({}, { __mode = "k" }),
+}
+
+local CAM_BIND = "AutoFarmCameraLock"
+local farmToggle = nil
+local rangeVisualPart = nil
+local rangeColor = Color3.fromRGB(0, 255, 255)
+
+local function getCharacterParts()
+	local char = LocalPlayer.Character
+	if not char then
+		return nil, nil
+	end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	return root, hum
+end
+
+local function resolvePart(prompt)
+	local parent = prompt.Parent
+	if not parent then
+		return nil
+	end
+	if parent:IsA("BasePart") then
+		return parent
+	end
+	if parent:IsA("Attachment") then
+		local p = parent.Parent
+		if p and p:IsA("BasePart") then
+			return p
+		end
+		return nil
+	end
+	if parent:IsA("Model") then
+		if parent.PrimaryPart then
+			return parent.PrimaryPart
+		end
+		return parent:FindFirstChildWhichIsA("BasePart", true)
+	end
+	return parent:FindFirstAncestorWhichIsA("BasePart") or parent:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function getActivationRange(prompt)
+	local maxDist = prompt.MaxActivationDistance
+	if not maxDist or maxDist <= 0 then
+		maxDist = 10
+	end
+	return math.max(maxDist, 6)
+end
+
+-- Kiểm tra xem ProximityPrompt có phải là Toy Box Pack không
+local function isToyBoxPack(prompt)
+	if not state.antiToyBox then
+		return false
+	end
+	local objText = prompt.ObjectText or ""
+	local actText = prompt.ActionText or ""
+	local parentName = prompt.Parent and prompt.Parent.Name or ""
+
+	local combined = (objText .. " " .. actText .. " " .. parentName):lower()
+	if combined:find("toy box") or combined:find("toybox") or combined:find("view pack") or combined:find("toy box pack") then
+		return true
+	end
+	return false
+end
+
+-- CHỈ nhận 2 loại thùng: "Trash" và "Dumpster" (ActionText phải là "Search")
+local FARM_OBJECTS = {
+	["trash"] = true,
+	["dumpster"] = true,
+}
+
+local function isTrashPrompt(prompt)
+	local objText = (prompt.ObjectText or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	local actText = (prompt.ActionText or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	return actText == "search" and FARM_OBJECTS[objText] == true
+end
+
+local function isPromptValid(prompt, part)
+	if not prompt or not prompt.Parent then
+		return false
+	end
+	if not prompt.Enabled then
+		return false
+	end
+	if not isTrashPrompt(prompt) then
+		return false
+	end
+	if isToyBoxPack(prompt) then
+		return false
+	end
+	if not prompt:IsDescendantOf(workspace) then
+		return false
+	end
+	if not part or not part:IsDescendantOf(workspace) then
+		return false
+	end
+	if part.Position.Y < CONFIG.VoidY then
+		return false
+	end
+	return true
+end
+
+local function groundAt(x, z, originY)
+	local char = LocalPlayer.Character
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	local hit = workspace:Raycast(Vector3.new(x, originY, z), Vector3.new(0, -80, 0), params)
+	return hit and hit.Position.Y or nil
+end
+
+local function isBlockedAt(pos, targetPart)
+	local char = LocalPlayer.Character
+	local op = OverlapParams.new()
+	op.FilterType = Enum.RaycastFilterType.Exclude
+	op.FilterDescendantsInstances = { char }
+	local parts = workspace:GetPartBoundsInBox(
+		CFrame.new(pos + Vector3.new(0, 1.5, 0)),
+		Vector3.new(1.8, 4, 1.8),
+		op
+	)
+	for _, p in ipairs(parts) do
+		if p ~= targetPart and p.CanCollide and p.Transparency < 0.9 then
+			return true
+		end
+	end
+	return false
+end
+
+local function hasLineOfSight(fromPos, prompt, part)
+	if not prompt.RequiresLineOfSight then
+		return true
+	end
+	local char = LocalPlayer.Character
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	local dir = part.Position - fromPos
+	local hit = workspace:Raycast(fromPos, dir, params)
+	if not hit then
+		return true
+	end
+	if hit.Instance == part then
+		return true
+	end
+	local container = part.Parent
+	if container and container ~= workspace and hit.Instance:IsDescendantOf(container) then
+		return true
+	end
+	return false
+end
+
+local function isGoodStand(pos, prompt, part)
+	local maxD = getActivationRange(prompt) - 0.8
+	local gy = groundAt(pos.X, pos.Z, part.Position.Y + 10)
+	if not gy or gy < CONFIG.VoidY then
+		return nil
+	end
+	local standPos = Vector3.new(pos.X, gy + 3, pos.Z)
+	if (standPos - part.Position).Magnitude > maxD then
+		return nil
+	end
+	if isBlockedAt(standPos, part) then
+		return nil
+	end
+	if not hasLineOfSight(standPos + Vector3.new(0, 1.5, 0), prompt, part) then
+		return nil
+	end
+	return standPos
+end
+
+local function findStandCF(prompt, part, root)
+	local maxD = getActivationRange(prompt) - 0.8
+	local toRoot = Vector3.new(root.Position.X - part.Position.X, 0, root.Position.Z - part.Position.Z)
+	local baseAngle = 0
+	if toRoot.Magnitude > 0.1 then
+		baseAngle = math.atan2(toRoot.X, toRoot.Z)
+	end
+
+	local radii = {
+		math.min(CONFIG.StandOff, maxD),
+		math.max(1.2, maxD * 0.5),
+		math.max(1.2, maxD * 0.8),
+	}
+	local offsets = { 0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180 }
+
+	for _, r in ipairs(radii) do
+		for _, deg in ipairs(offsets) do
+			local a = baseAngle + math.rad(deg)
+			local pos = Vector3.new(
+				part.Position.X + math.sin(a) * r,
+				part.Position.Y,
+				part.Position.Z + math.cos(a) * r
+			)
+			local standPos = isGoodStand(pos, prompt, part)
+			if standPos then
+				return CFrame.lookAt(standPos, Vector3.new(part.Position.X, standPos.Y, part.Position.Z))
+			end
+		end
+	end
+	return nil
+end
+
+local function canInteract(root, prompt, part)
+	if not root or not isPromptValid(prompt, part) then
+		return false
+	end
+	local dist = (root.Position - part.Position).Magnitude
+	if dist > getActivationRange(prompt) + 1 then
+		return false
+	end
+	return hasLineOfSight(root.Position + Vector3.new(0, 1.5, 0), prompt, part)
+end
+
+local function computeCameraCF(head, focus)
+	local char = LocalPlayer.Character
+	local toFocus = focus - head.Position
+	local flatDir = Vector3.new(toFocus.X, 0, toFocus.Z)
+	if flatDir.Magnitude < 0.1 then
+		flatDir = head.CFrame.LookVector * Vector3.new(1, 0, 1)
+	end
+	local back = -flatDir.Unit
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	params.IgnoreWater = true
+
+	local origin = head.Position + Vector3.new(0, CONFIG.CamHeight, 0)
+	local desired = origin + back * CONFIG.CamDistance
+	local hit = workspace:Raycast(origin, desired - origin, params)
+
+	local camPos
+	if hit then
+		local dist = math.max(hit.Distance - 0.6, CONFIG.CamMinDistance)
+		camPos = origin + back * dist
+	else
+		camPos = desired
+	end
+
+	return CFrame.lookAt(camPos, focus)
+end
+
+local function lockCamera()
+	if state.camLocked then
+		return
+	end
+	state.camLocked = true
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam.CameraType = Enum.CameraType.Scriptable
+	end
+	RunService:BindToRenderStep(CAM_BIND, Enum.RenderPriority.Camera.Value + 1, function()
+		if not state.running then
+			return
+		end
+		local char = LocalPlayer.Character
+		local head = char and char:FindFirstChild("Head")
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local currentCam = workspace.CurrentCamera
+		if not head or not root or not currentCam then
+			return
+		end
+		if currentCam.CameraType ~= Enum.CameraType.Scriptable then
+			currentCam.CameraType = Enum.CameraType.Scriptable
+		end
+		local focus = state.focusPos or (root.Position + root.CFrame.LookVector * 10)
+		currentCam.CFrame = computeCameraCF(head, focus)
+	end)
+end
+
+local function unlockCamera()
+	if not state.camLocked then
+		return
+	end
+	state.camLocked = false
+	pcall(function()
+		RunService:UnbindFromRenderStep(CAM_BIND)
+	end)
+	pcall(function()
+		local cam = workspace.CurrentCamera
+		local _, hum = getCharacterParts()
+		cam.CameraType = Enum.CameraType.Custom
+		if hum then
+			cam.CameraSubject = hum
+		end
+	end)
+end
+
+local function unstick()
+	local root, hum = getCharacterParts()
+	if not root or not hum then
+		return
+	end
+	hum:ChangeState(Enum.HumanoidStateType.Jumping)
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.AssemblyAngularVelocity = Vector3.zero
+	root.CFrame = root.CFrame + Vector3.new(0, 4, 0)
+	task.wait(0.3)
+end
+
+local function setHoldE(down)
+	if state.holdingE == down then
+		return
+	end
+	state.holdingE = down
+	pcall(function()
+		VirtualInputManager:SendKeyEvent(down, Enum.KeyCode.E, false, game)
+	end)
+end
+
+local function travelTo(targetCF)
+	local root, hum = getCharacterParts()
+	if not root or not hum or hum.Health <= 0 then
+		return false
+	end
+
+	local startPos = root.Position
+	local goal = targetCF.Position
+	local total = (goal - startPos).Magnitude
+
+	if total < 0.5 then
+		root.CFrame = targetCF
+		return true
+	end
+
+	local speed = math.max(CONFIG.TravelSpeed, 15)
+	local arcH = total > CONFIG.ShortDistance and CONFIG.ArcHeight or 0
+	local traveled = 0
+	local stuck = 0
+	local lastDesired = nil
+
+	while state.running and traveled < total do
+		local dt = math.min(RunService.Heartbeat:Wait(), 0.1)
+
+		root, hum = getCharacterParts()
+		if not root or not hum or hum.Health <= 0 then
+			return false
+		end
+
+		if lastDesired then
+			if (root.Position - lastDesired).Magnitude > 2.5 then
+				stuck += 1
+				if stuck >= CONFIG.MaxStuckFrames then
+					return false
+				end
+			else
+				stuck = 0
+			end
+		end
+
+		traveled = math.min(total, traveled + speed * dt)
+		local alpha = traveled / total
+		local pos = startPos:Lerp(goal, alpha)
+		pos = pos + Vector3.new(0, math.sin(alpha * math.pi) * arcH, 0)
+
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+		root.CFrame = CFrame.new(pos)
+		lastDesired = pos
+	end
+
+	if not state.running then
+		return false
+	end
+
+	root, hum = getCharacterParts()
+	if not root or not hum then
+		return false
+	end
+
+	for _ = 1, 4 do
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+		root.CFrame = targetCF
+		RunService.Heartbeat:Wait()
+	end
+
+	root = getCharacterParts()
+	if not root then
+		return false
+	end
+	return (root.Position - targetCF.Position).Magnitude < 5
+end
+
+local function findTarget(root)
+	local best, bestPart, bestDist = nil, nil, math.huge
+	local now = os.clock()
+
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") then
+			local part = resolvePart(obj)
+			if isPromptValid(obj, part) then
+				local last = state.blacklist[obj]
+				local usable = (not last) or (now - last > CONFIG.BlacklistTime)
+				if usable then
+					local dist = (part.Position - root.Position).Magnitude
+					if dist <= CONFIG.Range and dist < bestDist then
+						best, bestPart, bestDist = obj, part, dist
+					end
+				end
+			end
+		end
+	end
+
+	return best, bestPart
+end
+
+local function holdEFor(duration, prompt, part)
+	setHoldE(true)
+	local start = os.clock()
+	while state.running and os.clock() - start < duration do
+		if not (prompt.Parent and prompt.Enabled) then
+			break
+		end
+		state.focusPos = part.Position
+		task.wait(0.1)
+	end
+	setHoldE(false)
+end
+
+local function farmLoop()
+	while state.running do
+		local root, hum = getCharacterParts()
+		if not root or not hum or hum.Health <= 0 then
+			task.wait(1)
+			continue
+		end
+
+		local prompt, part = findTarget(root)
+		if not prompt then
+			state.focusPos = nil
+			task.wait(1)
+			continue
+		end
+
+		state.blacklist[prompt] = os.clock()
+		state.focusPos = part.Position
+
+		local arrived = false
+		for _ = 1, 2 do
+			if not state.running then
+				break
+			end
+			local r = getCharacterParts()
+			if not r then
+				break
+			end
+			local standCF = findStandCF(prompt, part, r)
+			if not standCF then
+				break
+			end
+			if travelTo(standCF) then
+				arrived = true
+				break
+			end
+			unstick()
+		end
+
+		if not arrived or not state.running then
+			state.focusPos = nil
+			task.wait(CONFIG.Cooldown)
+			continue
+		end
+
+		task.wait(CONFIG.ArriveWait)
+		if not state.running then
+			break
+		end
+
+		state.focusPos = part.Position
+
+		root = getCharacterParts()
+		if root and not canInteract(root, prompt, part) then
+			unstick()
+			local standCF = findStandCF(prompt, part, root)
+			if standCF then
+				travelTo(standCF)
+				task.wait(CONFIG.ArriveWait)
+			end
+			root = getCharacterParts()
+		end
+
+		if not root or not state.running or not canInteract(root, prompt, part) then
+			task.wait(CONFIG.Cooldown)
+			continue
+		end
+
+		holdEFor(CONFIG.HoldTime, prompt, part)
+
+		if state.running and prompt.Parent and prompt.Enabled and fireproximityprompt then
+			pcall(fireproximityprompt, prompt)
+		end
+
+		setHoldE(false)
+		state.focusPos = nil
+		task.wait(CONFIG.Cooldown)
+	end
+
+	setHoldE(false)
+	state.focusPos = nil
+end
+
+local function restoreZoom()
+	if state.origMinZoom then
+		pcall(function()
+			LocalPlayer.CameraMinZoomDistance = state.origMinZoom
+		end)
+		state.origMinZoom = nil
+	end
+end
+
+local function setFarming(value)
+	if state.running == value then
+		return
+	end
+	state.running = value
+	if value then
+		pcall(function()
+			state.origMinZoom = LocalPlayer.CameraMinZoomDistance
+			LocalPlayer.CameraMinZoomDistance = 0.5
+		end)
+		lockCamera()
+		task.spawn(function()
+			local ok, err = pcall(farmLoop)
+			if not ok then
+				warn("[AutoFarm] " .. tostring(err))
+			end
+			state.running = false
+			setHoldE(false)
+			state.focusPos = nil
+			unlockCamera()
+			restoreZoom()
+		end)
+	else
+		setHoldE(false)
+		state.focusPos = nil
+		unlockCamera()
+		restoreZoom()
+	end
+end
+
+local function applyInvisible(char)
+	if not char then
+		return
+	end
+	local target = state.invisible and 1 or 0
+	for _, d in ipairs(char:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = target
+		end
+	end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.DisplayDistanceType = state.invisible and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
+	end
+end
+
+local function updateRangeCircle()
+	if not state.showRange then
+		if rangeVisualPart then
+			rangeVisualPart:Destroy()
+			rangeVisualPart = nil
+		end
+		return
+	end
+
+	local root, _ = getCharacterParts()
+	if not root then
+		if rangeVisualPart then
+			rangeVisualPart.Transparency = 1
+		end
+		return
+	end
+
+	if not rangeVisualPart or not rangeVisualPart.Parent then
+		rangeVisualPart = Instance.new("Part")
+		rangeVisualPart.Name = "RangeVisualizer"
+		rangeVisualPart.Shape = Enum.PartType.Cylinder
+		rangeVisualPart.Anchored = true
+		rangeVisualPart.CanCollide = false
+		rangeVisualPart.CastShadow = false
+		rangeVisualPart.Material = Enum.Material.Neon
+		rangeVisualPart.Color = rangeColor
+		rangeVisualPart.Transparency = 0.5
+		rangeVisualPart.Parent = workspace
+	end
+
+	rangeVisualPart.Color = rangeColor
+	local diameter = CONFIG.Range * 2
+	rangeVisualPart.Size = Vector3.new(0.4, diameter, diameter)
+	rangeVisualPart.CFrame = CFrame.new(root.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+end
+
+RunService.RenderStepped:Connect(function()
+	if state.showRange then
+		updateRangeCircle()
+	end
+end)
+
+local function setFpsBoost(enabled)
+	state.fpsBoosted = enabled
+	if enabled then
+		pcall(function()
+			Lighting.GlobalShadows = false
+			Lighting.FogEnd = 9e9
+			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+
+			local terrain = workspace:FindFirstChildOfClass("Terrain")
+			if terrain then
+				terrain.WaterWaveSize = 0
+				terrain.WaterWaveSpeed = 0
+				terrain.WaterReflectance = 0
+				terrain.WaterTransparency = 0
+			end
+
+			for _, v in ipairs(workspace:GetDescendants()) do
+				if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+					v.Enabled = false
+				elseif v:IsA("BasePart") then
+					v.Material = Enum.Material.SmoothPlastic
+					v.Reflectance = 0
+				end
+			end
+		end)
+	else
+		pcall(function()
+			Lighting.GlobalShadows = true
+			settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+		end)
+	end
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+	task.wait(0.5)
+	applyInvisible(char)
+	if state.fpsBoosted then
+		setFpsBoost(true)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if state.invisible then
+			applyInvisible(LocalPlayer.Character)
+		end
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(CONFIG.AntiAFKInterval)
+		if state.antiAFK then
+			pcall(function()
+				VirtualUser:CaptureController()
+				VirtualUser:ClickButton2(Vector2.new())
+			end)
+		end
+	end
+end)
+
+local function setAntiAFK(on)
+	state.antiAFK = on
+	if on then
+		if not state.idleConn then
+			state.idleConn = LocalPlayer.Idled:Connect(function()
+				pcall(function()
+					VirtualUser:CaptureController()
+					VirtualUser:ClickButton2(Vector2.new())
+				end)
+			end)
+		end
+	else
+		if state.idleConn then
+			state.idleConn:Disconnect()
+			state.idleConn = nil
+		end
+	end
+end
+
+local function findRayfieldGuis()
+	local guis = {}
+	if UILib.Gui then
+		table.insert(guis, UILib.Gui)
+	end
+	return guis
+end
+
+local function setMenuVisible(value)
+	state.menuVisible = value
+	for _, gui in ipairs(findRayfieldGuis()) do
+		gui.Enabled = value
+	end
+end
+
+-- ==================== SILENT AIM ====================
+local Mouse = LocalPlayer:GetMouse()
+
+local aim = {
+	enabled = false,
+	fov = 150,
+	part = "Head",
+	teamCheck = false,
+	wallCheck = false,
+	showFov = false,
+}
+
+local fovCircle = nil
+pcall(function()
+	if Drawing then
+		fovCircle = Drawing.new("Circle")
+		fovCircle.Thickness = 1
+		fovCircle.NumSides = 64
+		fovCircle.Filled = false
+		fovCircle.Color = Color3.fromRGB(255, 255, 255)
+		fovCircle.Visible = false
+	end
+end)
+
+local currentTarget = nil
+
+local function sameTeam(p)
+	return p.Team ~= nil and LocalPlayer.Team ~= nil and p.Team == LocalPlayer.Team
+end
+
+local function isVisible(part)
+	local cam = workspace.CurrentCamera
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { LocalPlayer.Character }
+	local hit = workspace:Raycast(cam.CFrame.Position, part.Position - cam.CFrame.Position, params)
+	if not hit then
+		return true
+	end
+	return hit.Instance:IsDescendantOf(part.Parent)
+end
+
+local function getClosestTarget(cfg)
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return nil
+	end
+	local mousePos = UserInputService:GetMouseLocation()
+	local best, bestDist = nil, cfg.fov
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and not (cfg.teamCheck and sameTeam(p)) then
+			local char = p.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local part = char and char:FindFirstChild(cfg.part)
+			if part and hum and hum.Health > 0 then
+				local sp, onScreen = cam:WorldToViewportPoint(part.Position)
+				if onScreen then
+					local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
+					if d < bestDist and (not cfg.wallCheck or isVisible(part)) then
+						best, bestDist = part, d
+					end
+				end
+			end
+		end
+	end
+
+	return best
+end
+
+RunService.RenderStepped:Connect(function()
+	currentTarget = aim.enabled and getClosestTarget(aim) or nil
+	if fovCircle then
+		fovCircle.Visible = aim.enabled and aim.showFov
+		fovCircle.Radius = aim.fov
+		fovCircle.Position = UserInputService:GetMouseLocation()
+	end
+end)
+
+-- Hook Raycast / FindPartOnRay (súng dùng raycast) và Mouse.Hit / Mouse.Target (súng dùng chuột)
+pcall(function()
+	if not (hookmetamethod and getnamecallmethod and checkcaller) then
+		warn("[AutoFarm] Executor không hỗ trợ hookmetamethod, Silent Aim sẽ không hoạt động")
+		return
+	end
+
+	local oldNamecall
+	oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+		local method = getnamecallmethod()
+		if currentTarget and self == workspace and not checkcaller() then
+			if method == "Raycast" then
+				local args = table.pack(...)
+				if typeof(args[1]) == "Vector3" and typeof(args[2]) == "Vector3" then
+					args[2] = (currentTarget.Position - args[1]).Unit * args[2].Magnitude
+					return oldNamecall(self, table.unpack(args, 1, args.n))
+				end
+			elseif method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" then
+				local args = table.pack(...)
+				local ray = args[1]
+				if typeof(ray) == "Ray" then
+					args[1] = Ray.new(ray.Origin, (currentTarget.Position - ray.Origin).Unit * ray.Direction.Magnitude)
+					return oldNamecall(self, table.unpack(args, 1, args.n))
+				end
+			end
+		end
+		return oldNamecall(self, ...)
+	end))
+
+	local oldIndex
+	oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
+		if currentTarget and self == Mouse and not checkcaller() then
+			if key == "Hit" then
+				return currentTarget.CFrame
+			elseif key == "Target" then
+				return currentTarget
+			end
+		end
+		return oldIndex(self, key)
+	end))
+end)
+
+-- ==================== NO RECOIL ====================
+-- Quét các bảng cấu hình súng trong bộ nhớ (getgc), tìm trường có chữ "recoil"
+-- rồi nhân với recoilScale (0 = không giật). Lưu giá trị gốc để khôi phục khi tắt.
+local noRecoil = {
+	enabled = false,
+	scale = 0,
+}
+
+local recoilOriginal = setmetatable({}, { __mode = "k" }) -- [table] = { [key] = giá trị gốc }
+
+local function applyRecoil(scale)
+	if not getgc then
+		return
+	end
+	local ok, objects = pcall(getgc, true)
+	if not ok then
+		return
+	end
+	for _, obj in ipairs(objects) do
+		if type(obj) == "table" and not (isreadonly and isreadonly(obj)) then
+			pcall(function()
+				for key, value in pairs(obj) do
+					if type(key) == "string" and type(value) == "number" and key:lower():find("recoil") then
+						local saved = recoilOriginal[obj]
+						if not saved then
+							saved = {}
+							recoilOriginal[obj] = saved
+						end
+						if saved[key] == nil then
+							saved[key] = value
+						end
+						rawset(obj, key, saved[key] * scale)
+					end
+				end
+			end)
+		end
+	end
+end
+
+local function restoreRecoil()
+	for obj, saved in pairs(recoilOriginal) do
+		pcall(function()
+			for key, value in pairs(saved) do
+				rawset(obj, key, value)
+			end
+		end)
+	end
+	table.clear(recoilOriginal)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(1.5)
+		if noRecoil.enabled then
+			pcall(applyRecoil, noRecoil.scale)
+		end
+	end
+end)
+
+-- Chống giật camera: nếu game giật bằng cách xoay camera, bù lại phần xoay dọc đột ngột
+local lastCamPitch = nil
+RunService:BindToRenderStep("NoRecoilCam", Enum.RenderPriority.Camera.Value + 3, function()
+	local cam = workspace.CurrentCamera
+	if not cam or not noRecoil.enabled or state.running then
+		lastCamPitch = nil
+		return
+	end
+	local pitch = cam.CFrame:ToOrientation()
+	if lastCamPitch and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+		local delta = pitch - lastCamPitch
+		-- Giật lên đột ngột (không phải do chuột di chuyển) thì kéo xuống lại
+		local mouseDelta = UserInputService:GetMouseDelta()
+		if delta > 0.002 and math.abs(mouseDelta.Y) < 1 then
+			local fix = delta * (1 - noRecoil.scale)
+			cam.CFrame = cam.CFrame * CFrame.Angles(-fix, 0, 0)
+			pitch = pitch - fix
+		end
+	end
+	lastCamPitch = pitch
+end)
+
+-- ==================== ESP (đã gộp Box vào ESP Player, bỏ Skeleton) ====================
+local esp = {
+	enabled = false,
+	teamCheck = false,
+	showName = false,
+	showHealth = false,
+	showDistance = false,
+	showArmor = false,
+	newbieSize = 10,
+	chams = false,
+	color = Color3.fromRGB(255, 60, 60),
+	-- Kích thước ESP (chỉnh được trong menu)
+	textSize = 14,      -- cỡ chữ tên / máu / khoảng cách
+	boxScale = 100,     -- kích thước hộp (%), 100 = mặc định
+	boxThickness = 1.5, -- độ dày viền hộp / tracer
+	-- Box ESP (hộp bám theo người chơi)
+	box = false,
+	tracer = false,
+	boxHealth = false,
+	boxName = false,
+	boxDistance = false,
+	boxColor = Color3.fromRGB(255, 60, 60),
+}
+
+local espObjects = {}
+
+local function espParent()
+	if gethui then
+		local ok, ui = pcall(gethui)
+		if ok and ui then
+			return ui
+		end
+	end
+	return CoreGui
+end
+
+local function clearEsp(p)
+	local o = espObjects[p]
+	if o then
+		pcall(function() o.bb:Destroy() end)
+		espObjects[p] = nil
+	end
+end
+
+local function buildEsp(p, char)
+	local old = espObjects[p]
+	if old then
+		pcall(function() old.bb:Destroy() end)
+		espObjects[p] = nil
+	end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Adornee = root
+	bb.Size = UDim2.fromOffset(260, 64)
+	bb.StudsOffset = Vector3.new(0, 3.8, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = espParent()
+
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 13
+	label.TextColor3 = esp.color
+	label.TextStrokeTransparency = 0.5
+	label.Text = ""
+	label.RichText = true
+	label.TextYAlignment = Enum.TextYAlignment.Bottom
+	label.Parent = bb
+
+	espObjects[p] = { char = char, bb = bb, label = label }
+end
+
+local function shouldShowEsp(p)
+	if p == LocalPlayer then
+		return false, nil, nil
+	end
+	local char = p.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (char and hum and hum.Health > 0) then
+		return false, nil, nil
+	end
+	if esp.teamCheck and sameTeam(p) then
+		return false, nil, nil
+	end
+	return true, char, hum
+end
+
+-- Người có chữ "rookie" (tên, team, attribute, leaderstats, hoặc thẻ chữ trên đầu) sẽ hiện là "newbie"
+local function hasRookieText(v)
+	return type(v) == "string" and v:lower():find("rookie", 1, true) ~= nil
+end
+
+local function computeRookie(p, char)
+	if hasRookieText(p.DisplayName) or hasRookieText(p.Name) then
+		return true
+	end
+	if p.Team and hasRookieText(p.Team.Name) then
+		return true
+	end
+	for _, v in pairs(p:GetAttributes()) do
+		if hasRookieText(v) then
+			return true
+		end
+	end
+	local ls = p:FindFirstChild("leaderstats")
+	if ls then
+		for _, child in ipairs(ls:GetChildren()) do
+			if hasRookieText(child.Name) then
+				return true
+			end
+			if child:IsA("ValueBase") then
+				local ok, val = pcall(function()
+					return child.Value
+				end)
+				if ok and hasRookieText(val) then
+					return true
+				end
+			end
+		end
+	end
+	if char then
+		for _, v in pairs(char:GetAttributes()) do
+			if hasRookieText(v) then
+				return true
+			end
+		end
+		for _, d in ipairs(char:GetDescendants()) do
+			if (d:IsA("TextLabel") or d:IsA("TextButton")) and hasRookieText(d.Text) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local rookieCache = setmetatable({}, { __mode = "k" })
+
+local function isRookie(p, char)
+	local c = rookieCache[p]
+	local now = os.clock()
+	if not c or c.char ~= char or now - c.t > 2 then
+		c = { t = now, char = char, v = computeRookie(p, char) }
+		rookieCache[p] = c
+	end
+	return c.v
+end
+
+local NEWBIE_COLOR = Color3.fromRGB(70, 255, 110)
+
+local function espName(p, char)
+	if isRookie(p, char) then
+		return "newbie"
+	end
+	return p.DisplayName
+end
+
+local ARMOR_KEYS = { "armor", "armour", "vest", "kevlar", "shield" }
+
+local function matchArmorName(n)
+	n = tostring(n):lower()
+	for _, k in ipairs(ARMOR_KEYS) do
+		if n:find(k, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+local function computeArmor(p, char, hum)
+	local holders = { p, char, hum }
+	for _, h in ipairs(holders) do
+		if h then
+			for k, v in pairs(h:GetAttributes()) do
+				if type(v) == "number" and matchArmorName(k) then
+					return v
+				end
+			end
+		end
+	end
+	for _, root in ipairs({ char, p }) do
+		if root then
+			for _, d in ipairs(root:GetDescendants()) do
+				if (d:IsA("NumberValue") or d:IsA("IntValue")) and matchArmorName(d.Name) then
+					return d.Value
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local armorCache = setmetatable({}, { __mode = "k" })
+
+local function findArmor(p, char, hum)
+	local c = armorCache[p]
+	local now = os.clock()
+	if not c or c.char ~= char or now - c.t > 1 then
+		c = { t = now, char = char, v = computeArmor(p, char, hum) }
+		armorCache[p] = c
+	end
+	return c.v
+end
+
+local function rgbStr(c)
+	return string.format("rgb(%d,%d,%d)", math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255))
+end
+
+local function xmlEscape(t)
+	return (tostring(t):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+end
+
+-- Nhãn trên đầu: dòng 1 = tên (newbie thì to + xanh lá), dòng 2 = máu / giáp
+local function espLabelText(p, char, hum)
+	local rookie = isRookie(p, char)
+	local nameColor = rookie and NEWBIE_COLOR or esp.color
+	local nameSize = rookie and esp.newbieSize or esp.textSize
+	local text = string.format('<font size="%d" color="%s"><b>%s</b></font>', nameSize, rgbStr(nameColor), xmlEscape(espName(p, char)))
+
+	local parts = {}
+	if esp.showHealth and hum then
+		local ratio = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+		local hc = Color3.fromRGB(255, 70, 70):Lerp(Color3.fromRGB(80, 255, 110), ratio)
+		table.insert(parts, string.format('<font color="%s">HP %d</font>', rgbStr(hc), math.floor(hum.Health)))
+	end
+	if esp.showArmor then
+		local armor = findArmor(p, char, hum)
+		if armor then
+			table.insert(parts, string.format('<font color="rgb(90,170,255)">AR %d</font>', math.floor(armor)))
+		end
+	end
+	if #parts > 0 then
+		local subSize = math.max(8, esp.textSize - 4)
+		text = text .. string.format('\n<font size="%d">%s</font>', subSize, table.concat(parts, "  "))
+	end
+	return text
+end
+
+local function refreshEsp()
+	for _, p in ipairs(Players:GetPlayers()) do
+		local ok, char, hum = shouldShowEsp(p)
+		if not (esp.enabled and ok) then
+			local o = espObjects[p]
+			if o then
+				pcall(function() o.bb:Destroy() end)
+				espObjects[p] = nil
+			end
+		else
+			local o = espObjects[p]
+			if not o or o.char ~= char or not o.bb.Parent then
+				buildEsp(p, char)
+				o = espObjects[p]
+			end
+			if o then
+				o.label.Text = espLabelText(p, char, hum)
+				o.label.Visible = not esp.box
+			end
+		end
+	end
+end
+
+-- Chams: tô màu cả thân người chơi (Highlight)
+local chamsObjects = {}
+
+local function clearChams(p)
+	local h = chamsObjects[p]
+	if h then
+		pcall(function() h:Destroy() end)
+		chamsObjects[p] = nil
+	end
+end
+
+local function updateChams()
+	for _, p in ipairs(Players:GetPlayers()) do
+		local ok, char = shouldShowEsp(p)
+		if not (esp.enabled and esp.chams and ok) then
+			clearChams(p)
+		else
+			local h = chamsObjects[p]
+			if not h or not h.Parent or h.Adornee ~= char then
+				clearChams(p)
+				h = Instance.new("Highlight")
+				h.Adornee = char
+				h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				h.Parent = espParent()
+				chamsObjects[p] = h
+			end
+			h.FillColor = esp.color
+			h.OutlineColor = esp.color
+			h.FillTransparency = 0.35
+			h.OutlineTransparency = 0
+		end
+	end
+end
+
+Players.PlayerRemoving:Connect(clearEsp)
+Players.PlayerRemoving:Connect(clearChams)
+
+task.spawn(function()
+	while true do
+		task.wait(0.1)
+		pcall(refreshEsp)
+		pcall(updateChams)
+	end
+end)
+
+-- ==================== BOX ESP (hộp 2D + tên + khoảng cách + thanh máu + tracer) ====================
+local boxObjects = {} -- [player] = { char, outline, box, name, dist, hpBack, hp, tracer }
+
+local function newDrawing(kind, props)
+	local d = Drawing.new(kind)
+	for k, v in pairs(props) do
+		d[k] = v
+	end
+	return d
+end
+
+local function clearBox(p)
+	local o = boxObjects[p]
+	if o then
+		for key, d in pairs(o) do
+			if key ~= "char" then
+				pcall(function() d:Remove() end)
+			end
+		end
+		boxObjects[p] = nil
+	end
+end
+
+local function hideBox(o)
+	for key, d in pairs(o) do
+		if key ~= "char" then
+			d.Visible = false
+		end
+	end
+end
+
+local function buildBox(p, char)
+	return {
+		char = char,
+		outline = newDrawing("Square", { Thickness = 3, Filled = false, Color = Color3.new(0, 0, 0), Transparency = 1, Visible = false }),
+		box = newDrawing("Square", { Thickness = 1.5, Filled = false, Color = esp.boxColor, Transparency = 1, Visible = false }),
+		name = newDrawing("Text", { Size = 13, Center = true, Outline = true, Color = Color3.new(1, 1, 1), Visible = false }),
+		dist = newDrawing("Text", { Size = 12, Center = true, Outline = true, Color = Color3.new(1, 1, 1), Visible = false }),
+		hpBack = newDrawing("Square", { Filled = true, Color = Color3.new(0, 0, 0), Transparency = 1, Visible = false }),
+		hp = newDrawing("Square", { Filled = true, Color = Color3.fromRGB(0, 255, 0), Transparency = 1, Visible = false }),
+		tracer = newDrawing("Line", { Thickness = 1, Color = esp.boxColor, Transparency = 1, Visible = false }),
+	}
+end
+
+local function updateBoxEsp()
+	local cam = workspace.CurrentCamera
+	if not cam or not Drawing then
+		return
+	end
+
+	if GuiService.MenuIsOpen then
+		for _, o in pairs(boxObjects) do
+			hideBox(o)
+		end
+		return
+	end
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		local ok, char, hum = shouldShowEsp(p)
+		if not (esp.enabled and (esp.box or esp.tracer) and ok) then
+			clearBox(p)
+		else
+			local root = char:FindFirstChild("HumanoidRootPart")
+			local o = boxObjects[p]
+			if not o or o.char ~= char then
+				clearBox(p)
+				o = buildBox(p, char)
+				boxObjects[p] = o
+			end
+
+			if not root then
+				hideBox(o)
+			else
+				local top, onTop = cam:WorldToViewportPoint(root.Position + Vector3.new(0, 2.9, 0))
+				local bot, onBot = cam:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
+				if not (onTop and onBot) or top.Z <= 0 or bot.Z <= 0 then
+					hideBox(o)
+				else
+					-- Kích thước hộp: nhân theo boxScale, giữ nguyên tâm hộp
+					local scale = esp.boxScale / 100
+					local baseHeight = math.abs(bot.Y - top.Y)
+					local centerY = (top.Y + bot.Y) / 2
+					local height = baseHeight * scale
+					local width = height * 0.6
+					local cx = top.X
+					local x = cx - width / 2
+					local y = centerY - height / 2
+
+					o.outline.Visible = esp.box
+					o.box.Visible = esp.box
+					if esp.box then
+						o.outline.Thickness = esp.boxThickness + 1.5
+						o.outline.Position = Vector2.new(x, y)
+						o.outline.Size = Vector2.new(width, height)
+						o.box.Thickness = esp.boxThickness
+						o.box.Position = Vector2.new(x, y)
+						o.box.Size = Vector2.new(width, height)
+						o.box.Color = esp.boxColor
+					end
+
+					local showHp = esp.box and esp.boxHealth
+					o.hpBack.Visible = showHp
+					o.hp.Visible = showHp
+					if showHp then
+						local ratio = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+						local barW = math.max(2, math.floor(esp.boxThickness + 0.5) + 1)
+						o.hpBack.Position = Vector2.new(x - barW - 4, y - 1)
+						o.hpBack.Size = Vector2.new(barW + 2, height + 2)
+						o.hp.Position = Vector2.new(x - barW - 3, y + height * (1 - ratio))
+						o.hp.Size = Vector2.new(barW, height * ratio)
+						o.hp.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), ratio)
+					end
+
+					local showName = esp.box and esp.boxName
+					o.name.Visible = showName
+					if showName then
+						local rookie = isRookie(p, char)
+						local nameSize = rookie and math.max(12, esp.newbieSize - 2) or esp.textSize
+						o.name.Text = espName(p, char)
+						o.name.Color = rookie and NEWBIE_COLOR or Color3.new(1, 1, 1)
+						o.name.Size = nameSize
+						o.name.Position = Vector2.new(cx, y - nameSize - 4)
+					end
+
+					local showDist = esp.box and esp.boxDistance
+					o.dist.Visible = showDist
+					if showDist then
+						local myRoot = getCharacterParts()
+						local d = myRoot and math.floor((root.Position - myRoot.Position).Magnitude) or 0
+						o.dist.Text = d .. "m"
+						o.dist.Size = math.max(8, esp.textSize - 1)
+						o.dist.Position = Vector2.new(cx, y + height + 2)
+					end
+
+					o.tracer.Visible = esp.tracer
+					if esp.tracer then
+						o.tracer.Thickness = esp.boxThickness
+						o.tracer.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
+						o.tracer.To = Vector2.new(cx, y + height)
+						o.tracer.Color = esp.boxColor
+					end
+				end
+			end
+		end
+	end
+end
+
+Players.PlayerRemoving:Connect(clearBox)
+
+RunService.RenderStepped:Connect(function()
+	pcall(updateBoxEsp)
+end)
+
+-- ==================== CHẠY NHANH ====================
+-- Bật tính năng trong menu, rồi GIỮ SHIFT TRÁI để chạy nhanh, thả ra thì về tốc độ cũ
+local speed = {
+	enabled = false,
+	value = 50,
+	orig = 16,
+	applied = false,
+}
+
+-- Không dùng WalkSpeed nữa (game Outside hay reset/khóa giá trị này).
+-- Thay vào đó đẩy nhân vật tiến thêm theo hướng đang đi bằng CFrame mỗi frame.
+RunService.Heartbeat:Connect(function(dt)
+	local root, hum = getCharacterParts()
+	if not root or not hum or hum.Health <= 0 then
+		return
+	end
+	if not speed.enabled or state.running then
+		return
+	end
+	if not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:GetFocusedTextBox() then
+		return
+	end
+	local dir = hum.MoveDirection
+	if dir.Magnitude < 0.1 then
+		return
+	end
+	local extra = math.max(speed.value - hum.WalkSpeed, 0)
+	root.CFrame = root.CFrame + dir.Unit * extra * dt
+end)
+
+local function setSpeed(on)
+	speed.enabled = on
+end
+
+-- ==================== QUAY NGƯỜI (SPIN) ====================
+-- Nhân vật xoay liên tục quanh trục dọc nên người khác khó ngắm trúng.
+local spin = {
+	enabled = false,
+	speed = 8, -- số vòng quay mỗi giây
+	active = false,
+}
+
+RunService.Heartbeat:Connect(function(dt)
+	local root, hum = getCharacterParts()
+	if not root or not hum or hum.Health <= 0 then
+		spin.active = false
+		return
+	end
+	if spin.enabled and not state.running then
+		if not spin.active then
+			spin.active = true
+			hum.AutoRotate = false -- không cho game xoay nhân vật lại theo hướng đi
+		end
+		root.CFrame = root.CFrame * CFrame.Angles(0, spin.speed * 2 * math.pi * dt, 0)
+	elseif spin.active then
+		spin.active = false
+		hum.AutoRotate = true
+	end
+end)
+
+local Window = UILib:CreateWindow({
+	Name = "Lucifer Hub",
+	LoadingTitle = "Lucifer Hub",
+	LoadingSubtitle = "Auto Farm  •  ESP  •  Aim",
+	Theme = "Lucifer",
+	DisableRayfieldPrompts = true,
+	DisableBuildWarnings = true,
+	ConfigurationSaving = { Enabled = false },
+	Discord = { Enabled = false },
+})
+
+local FarmTab = Window:CreateTab("Farm", "trash-2")
+
+FarmTab:CreateSection("Auto Farm")
+
+farmToggle = FarmTab:CreateToggle({
+	Name = "Auto Farm",
+	CurrentValue = false,
+	Flag = "AutoFarm",
+	Callback = function(value)
+		setFarming(value)
+	end,
+})
+
+FarmTab:CreateToggle({
+	Name = "Hiển thị vòng tròn phạm vi quét",
+	CurrentValue = false,
+	Flag = "ShowRange",
+	Callback = function(value)
+		state.showRange = value
+		if not value and rangeVisualPart then
+			rangeVisualPart:Destroy()
+			rangeVisualPart = nil
+		end
+	end,
+})
+
+FarmTab:CreateColorPicker({
+	Name = "Màu vòng tròn phạm vi",
+	Color = Color3.fromRGB(0, 255, 255),
+	Flag = "RangeColor",
+	Callback = function(value)
+		rangeColor = value
+		if rangeVisualPart then
+			rangeVisualPart.Color = rangeColor
+		end
+	end,
+})
+
+FarmTab:CreateSection("Thông số")
+
+FarmTab:CreateSlider({
+	Name = "Thời gian giữ E",
+	Range = { 1, 15 },
+	Increment = 1,
+	Suffix = "s",
+	CurrentValue = CONFIG.HoldTime,
+	Flag = "HoldTime",
+	Callback = function(value)
+		CONFIG.HoldTime = value
+	end,
+})
+
+FarmTab:CreateSlider({
+	Name = "Phạm vi quét",
+	Range = { 50, 500 },
+	Increment = 10,
+	Suffix = "studs",
+	CurrentValue = CONFIG.Range,
+	Flag = "Range",
+	Callback = function(value)
+		CONFIG.Range = value
+	end,
+})
+
+FarmTab:CreateSlider({
+	Name = "Tốc độ di chuyển",
+	Range = { 15, 120 },
+	Increment = 5,
+	Suffix = "studs/s",
+	CurrentValue = CONFIG.TravelSpeed,
+	Flag = "TravelSpeed",
+	Callback = function(value)
+		CONFIG.TravelSpeed = value
+	end,
+})
+
+FarmTab:CreateSlider({
+	Name = "Khoảng cách camera",
+	Range = { 3, 15 },
+	Increment = 1,
+	Suffix = "studs",
+	CurrentValue = CONFIG.CamDistance,
+	Flag = "CamDistance",
+	Callback = function(value)
+		CONFIG.CamDistance = value
+	end,
+})
+
+local SafetyTab = Window:CreateTab("An toàn", "shield-check")
+
+SafetyTab:CreateSection("Bảo vệ")
+
+SafetyTab:CreateToggle({
+	Name = "Tàng hình (ẩn nhân vật với bạn)",
+	CurrentValue = false,
+	Flag = "Invisible",
+	Callback = function(value)
+		state.invisible = value
+		applyInvisible(LocalPlayer.Character)
+	end,
+})
+
+local CombatTab = Window:CreateTab("Combat", "swords")
+local AimTab = CombatTab
+
+AimTab:CreateSection("Silent Aim")
+
+AimTab:CreateToggle({
+	Name = "Silent Aim",
+	CurrentValue = false,
+	Flag = "SilentAim",
+	Callback = function(value)
+		aim.enabled = value
+	end,
+})
+
+AimTab:CreateToggle({
+	Name = "Hiển thị vòng FOV",
+	CurrentValue = false,
+	Flag = "ShowFov",
+	Callback = function(value)
+		aim.showFov = value
+	end,
+})
+
+AimTab:CreateToggle({
+	Name = "Bỏ qua đồng đội",
+	CurrentValue = false,
+	Flag = "AimTeamCheck",
+	Callback = function(value)
+		aim.teamCheck = value
+	end,
+})
+
+AimTab:CreateToggle({
+	Name = "Kiểm tra vật cản (không nhắm xuyên tường)",
+	CurrentValue = false,
+	Flag = "AimWallCheck",
+	Callback = function(value)
+		aim.wallCheck = value
+	end,
+})
+
+AimTab:CreateSection("Tùy chỉnh nhắm")
+
+AimTab:CreateDropdown({
+	Name = "Bộ phận nhắm",
+	Options = { "Head", "HumanoidRootPart", "UpperTorso", "Torso" },
+	CurrentOption = { "Head" },
+	MultipleOptions = false,
+	Flag = "AimPart",
+	Callback = function(option)
+		aim.part = type(option) == "table" and option[1] or option
+	end,
+})
+
+AimTab:CreateSlider({
+	Name = "Bán kính FOV",
+	Range = { 30, 600 },
+	Increment = 10,
+	Suffix = "px",
+	CurrentValue = aim.fov,
+	Flag = "AimFov",
+	Callback = function(value)
+		aim.fov = value
+	end,
+})
+
+local RecoilTab = CombatTab
+
+RecoilTab:CreateSection("No Recoil")
+
+RecoilTab:CreateToggle({
+	Name = "Không giật (No Recoil)",
+	CurrentValue = false,
+	Flag = "NoRecoil",
+	Callback = function(value)
+		noRecoil.enabled = value
+		if value then
+			task.spawn(function()
+				pcall(applyRecoil, noRecoil.scale)
+			end)
+		else
+			restoreRecoil()
+		end
+	end,
+})
+
+RecoilTab:CreateSlider({
+	Name = "Mức giật còn lại (0 = không giật)",
+	Range = { 0, 100 },
+	Increment = 5,
+	Suffix = "%",
+	CurrentValue = 0,
+	Flag = "RecoilScale",
+	Callback = function(value)
+		noRecoil.scale = value / 100
+		if noRecoil.enabled then
+			task.spawn(function()
+				pcall(applyRecoil, noRecoil.scale)
+			end)
+		end
+	end,
+})
+
+CombatTab:CreateSection("Quay người (Spin)")
+
+CombatTab:CreateToggle({
+	Name = "Quay người (Spin)",
+	CurrentValue = false,
+	Flag = "Spin",
+	Callback = function(value)
+		spin.enabled = value
+	end,
+})
+
+CombatTab:CreateSlider({
+	Name = "Tốc độ quay",
+	Range = { 1, 30 },
+	Increment = 1,
+	Suffix = "vòng/s",
+	CurrentValue = spin.speed,
+	Flag = "SpinSpeed",
+	Callback = function(value)
+		spin.speed = value
+	end,
+})
+
+-- ==================== TAB DI CHUYỂN ====================
+local MoveTab = Window:CreateTab("Di chuyển", "wind")
+
+MoveTab:CreateSection("Chạy nhanh")
+
+MoveTab:CreateToggle({
+	Name = "Chạy nhanh (giữ Shift trái để chạy)",
+	CurrentValue = false,
+	Flag = "SpeedHack",
+	Callback = function(value)
+		setSpeed(value)
+	end,
+})
+
+MoveTab:CreateSlider({
+	Name = "Tốc độ chạy",
+	Range = { 16, 200 },
+	Increment = 2,
+	Suffix = "",
+	CurrentValue = speed.value,
+	Flag = "SpeedValue",
+	Callback = function(value)
+		speed.value = value
+	end,
+})
+
+-- ==================== TAB ESP (đã gộp) ====================
+local EspTab = Window:CreateTab("ESP", "eye")
+
+EspTab:CreateSection("ESP Player")
+
+EspTab:CreateToggle({
+	Name = "ESP Player",
+	CurrentValue = false,
+	Flag = "EspEnabled",
+	Callback = function(value)
+		esp.enabled = value
+		if not value then
+			for p in pairs(espObjects) do
+				clearEsp(p)
+			end
+			for p in pairs(boxObjects) do
+				clearBox(p)
+			end
+			for p in pairs(chamsObjects) do
+				clearChams(p)
+			end
+		end
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Tô màu thân người (Chams)",
+	CurrentValue = false,
+	Flag = "EspChams",
+	Callback = function(value)
+		esp.chams = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Box (hộp bám theo người chơi)",
+	CurrentValue = false,
+	Flag = "EspBox",
+	Callback = function(value)
+		esp.box = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Bỏ qua đồng đội",
+	CurrentValue = false,
+	Flag = "EspTeamCheck",
+	Callback = function(value)
+		esp.teamCheck = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Hiện tên",
+	CurrentValue = false,
+	Flag = "EspBoxName",
+	Callback = function(value)
+		esp.boxName = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Hiện máu / thanh máu",
+	CurrentValue = false,
+	Flag = "EspHealth",
+	Callback = function(value)
+		esp.showHealth = value
+		esp.boxHealth = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Hiện giáp",
+	CurrentValue = false,
+	Flag = "EspArmor",
+	Callback = function(value)
+		esp.showArmor = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Khoảng cách",
+	CurrentValue = false,
+	Flag = "EspBoxDistance",
+	Callback = function(value)
+		esp.boxDistance = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Tracer (đường kẻ tới người chơi)",
+	CurrentValue = false,
+	Flag = "EspTracer",
+	Callback = function(value)
+		esp.tracer = value
+	end,
+})
+
+EspTab:CreateSection("Kích thước ESP")
+
+EspTab:CreateSlider({
+	Name = "Cỡ chữ ESP (tên / máu / khoảng cách)",
+	Range = { 8, 30 },
+	Increment = 1,
+	Suffix = "px",
+	CurrentValue = esp.textSize,
+	Flag = "EspTextSize",
+	Callback = function(value)
+		esp.textSize = value
+	end,
+})
+
+EspTab:CreateSlider({
+	Name = "Kích thước box",
+	Range = { 50, 200 },
+	Increment = 5,
+	Suffix = "%",
+	CurrentValue = esp.boxScale,
+	Flag = "EspBoxScale",
+	Callback = function(value)
+		esp.boxScale = value
+	end,
+})
+
+EspTab:CreateSlider({
+	Name = "Độ dày viền box / tracer",
+	Range = { 1, 5 },
+	Increment = 0.5,
+	Suffix = "px",
+	CurrentValue = esp.boxThickness,
+	Flag = "EspBoxThickness",
+	Callback = function(value)
+		esp.boxThickness = value
+	end,
+})
+
+EspTab:CreateSlider({
+	Name = "Cỡ chữ newbie",
+	Range = { 10, 40 },
+	Increment = 1,
+	Suffix = "px",
+	CurrentValue = 19,
+	Flag = "NewbieSize",
+	Callback = function(value)
+		esp.newbieSize = value
+	end,
+})
+
+EspTab:CreateColorPicker({
+	Name = "Màu ESP",
+	Color = esp.color,
+	Flag = "EspColor",
+	Callback = function(value)
+		esp.color = value
+		esp.boxColor = value
+	end,
+})
+
+local FpsTab = Window:CreateTab("Boost FPS", "zap")
+
+FpsTab:CreateSection("Hiệu năng")
+
+FpsTab:CreateToggle({
+	Name = "Bật Tối Ưu / Boost FPS (Giảm Lag)",
+	CurrentValue = false,
+	Flag = "FpsBoost",
+	Callback = function(value)
+		setFpsBoost(value)
+	end,
+})
+
+local MiscTab = Window:CreateTab("Misc", "settings")
+
+MiscTab:CreateSection("Giao diện")
+
+MiscTab:CreateDropdown({
+	Name = "Theme",
+	Options = { "Lucifer", "Amethyst", "Ocean", "Green", "Gold" },
+	CurrentOption = { "Lucifer" },
+	MultipleOptions = false,
+	Flag = "UITheme",
+	Callback = function(option)
+		local name = type(option) == "table" and option[1] or option
+		pcall(function()
+			Window.ModifyTheme(name)
+		end)
+	end,
+})
+
+-- ---------- Tùy chỉnh giao diện ----------
+local uiReady = false
+task.delay(3, function()
+	uiReady = true
+end)
+
+local function applyMenuScale(percent)
+	for _, gui in ipairs(findRayfieldGuis()) do
+		local main = gui:FindFirstChild("Main")
+		if main then
+			local sc = main:FindFirstChild("LuciferScale")
+			if not sc then
+				sc = Instance.new("UIScale")
+				sc.Name = "LuciferScale"
+				sc.Parent = main
+			end
+			sc.Scale = percent / 100
+		end
+	end
+end
+
+local function applyMenuTransparency(percent)
+	for _, gui in ipairs(findRayfieldGuis()) do
+		local main = gui:FindFirstChild("Main")
+		if main then
+			main.BackgroundTransparency = percent / 100
+		end
+	end
+end
+
+local function applyAccent(c)
+	pcall(function()
+		Window.ModifyTheme({
+			ToggleEnabled = c,
+			ToggleEnabledStroke = c,
+			ToggleEnabledOuterStroke = c,
+			SliderProgress = c,
+			SliderStroke = c,
+			SliderBackground = c:Lerp(Color3.new(0, 0, 0), 0.55),
+			TabBackgroundSelected = c,
+			DropdownSelected = c:Lerp(Color3.new(0, 0, 0), 0.6),
+		})
+	end)
+end
+
+local function applyBackground(c)
+	local white = Color3.new(1, 1, 1)
+	pcall(function()
+		Window.ModifyTheme({
+			Background = c,
+			Topbar = c:Lerp(white, 0.06),
+			TabBackground = c:Lerp(white, 0.05),
+			ElementBackground = c:Lerp(white, 0.08),
+			ElementBackgroundHover = c:Lerp(white, 0.13),
+			SecondaryElementBackground = c:Lerp(white, 0.05),
+			DropdownUnselected = c:Lerp(white, 0.06),
+			InputBackground = c:Lerp(white, 0.06),
+		})
+	end)
+end
+
+MiscTab:CreateSection("Tùy chỉnh giao diện")
+
+MiscTab:CreateColorPicker({
+	Name = "Màu chủ đạo (nút, thanh trượt, tab)",
+	Color = Color3.fromRGB(130, 60, 255),
+	Flag = "UIAccent",
+	Callback = function(value)
+		if uiReady then
+			applyAccent(value)
+		end
+	end,
+})
+
+MiscTab:CreateColorPicker({
+	Name = "Màu nền menu",
+	Color = Color3.fromRGB(20, 18, 28),
+	Flag = "UIBackground",
+	Callback = function(value)
+		if uiReady then
+			applyBackground(value)
+		end
+	end,
+})
+
+local scaleSlider = MiscTab:CreateSlider({
+	Name = "Kích thước menu",
+	Range = { 60, 140 },
+	Increment = 5,
+	Suffix = "%",
+	CurrentValue = 100,
+	Flag = "UIScale",
+	Callback = function(value)
+		applyMenuScale(value)
+	end,
+})
+
+local transSlider = MiscTab:CreateSlider({
+	Name = "Độ trong suốt nền menu",
+	Range = { 0, 70 },
+	Increment = 5,
+	Suffix = "%",
+	CurrentValue = 0,
+	Flag = "UITransparency",
+	Callback = function(value)
+		applyMenuTransparency(value)
+	end,
+})
+
+MiscTab:CreateDropdown({
+	Name = "Phím ẩn / hiện menu",
+	Options = { "RightShift", "RightControl", "LeftAlt", "Insert", "Delete", "End", "Home", "K" },
+	CurrentOption = { "RightShift" },
+	MultipleOptions = false,
+	Flag = "MenuKey",
+	Callback = function(option)
+		local name = type(option) == "table" and option[1] or option
+		local key = Enum.KeyCode[name]
+		if key then
+			CONFIG.MenuKey = key
+		end
+	end,
+})
+
+MiscTab:CreateButton({
+	Name = "Đặt lại giao diện mặc định",
+	Callback = function()
+		pcall(function()
+			Window.ModifyTheme("Lucifer")
+		end)
+		pcall(function()
+			scaleSlider:Set(100)
+		end)
+		pcall(function()
+			transSlider:Set(0)
+		end)
+		applyMenuScale(100)
+		applyMenuTransparency(0)
+	end,
+})
+
+MiscTab:CreateSection("Khác")
+
+MiscTab:CreateToggle({
+	Name = "Anti Toy Box Pack (Bỏ qua rương Toy Box)",
+	CurrentValue = true,
+	Flag = "AntiToyBox",
+	Callback = function(value)
+		state.antiToyBox = value
+	end,
+})
+
+MiscTab:CreateToggle({
+	Name = "Anti AFK",
+	CurrentValue = true,
+	Flag = "AntiAFK",
+	Callback = function(value)
+		setAntiAFK(value)
+	end,
+})
+
+setAntiAFK(state.antiAFK)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then
+		return
+	end
+	if input.KeyCode == CONFIG.MenuKey then
+		setMenuVisible(not (UILib.Gui and UILib.Gui.Enabled))
+	end
+end)
+
+task.defer(function()
+	task.wait(1)
+	setMenuVisible(true)
+	pcall(function()
+		UILib:Notify({
+			Title = "Lucifer Hub",
+			Content = "Đã tải xong. Nhấn RightShift để ẩn / hiện menu.",
+			Duration = 6,
+			Image = "flame",
+		})
+	end)
+end)
+
+applyInvisible(LocalPlayer.Character)
