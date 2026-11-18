@@ -10,6 +10,69 @@ local LocalPlayer = Players.LocalPlayer
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
+-- Logo Lucifer (nhúng sẵn trong code). Muốn ảnh khác: dán link ảnh trực tiếp (.png/.jpg) vào LOGO_URL
+local LOGO_URL = ""
+local LOGO_B64 = [[/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAcFBQYFBAcGBgYIBwcICxILCwoKCxYPEA0SGhYbGhkWGRgcICgiHB4mHhgZIzAkJiorLS4tGyIyNTEsNSgsLSz/2wBDAQcICAsJCxULCxUsHRkdLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCz/wAARCADcANwDASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAwECBAUGBwAI/8QAQBAAAgEDAwIFAgMFBwIFBQAAAQIDAAQRBRIhMUEGEyJRYXGBFDKRByOhscEVQlJi0eHwFjMkgpKi8UNTY3Pi/8QAGgEAAwEBAQEAAAAAAAAAAAAAAQIDBAAFBv/EACIRAAICAgIDAQEBAQAAAAAAAAABAhEDIRIxBBNBURQyQv/aAAwDAQACEQMRAD8A7e2QpwckdqTIALDnHHFOVdrYPOeM5pnIZgBng81czjgcgEnj607OBnrTANy4OM9hTsdQeMDpQOocD0YfoDXt47mhPuHK8/SlA6nn5oPsYc2N2QMY796Gyb24JJpWGCrccHilBbggZNccMYcnJzinLsVs7e3Y0gO4jjApGyHJPqpQjwQOR1oF5YWl/EEu4FkHYngj6GnsDwcEDtTXCyJsc4BHJ9qKOKabQvD8D+ZPPI6xkfumlz9sDmkn17R4rY2qWXnQYwE2AJj707UtDaWHfZlN46RliAw+D2+9VA8OakR6rbZnr6xx/GqJIRsqLy0sp/NW2gNrG44QMXUfTPIqCLW+gUpHLE4A6y5GP07/AHrSN4e1IEKtu59vUDQZtF1OBS8lpOV6llXd/KqWgFC39oovpS1VsdQzYP8ACjot3Ko3CMDGPzEc9+MVNaNkGGR8/wCZSKQwThQEJAPdQf6UdM4B+EnP52UZGD1P2p34YL+difY4zSuZkx5m8Ef4lI/nSrLK5GwuSP8AnShQuyRHaoUyXc47McD9Ki3uyKINEieg5wmKXyZGb1Ki47uf9aP6VAUOi5HRcAUGglUk5DZ2qMc+o043hLgbh8YHSnTWkCbnVwBnoATzUO5Zm4fHwR0NKkEKY0e6WQ54YZbPb2qXdeZPbnyizKo5XP5vn5qLCkjQuhU8diOnHtRik6sCZdsYAwq5yT8n3+lLJoaK2IspFsqOm1XGOD2B6VLEilQQcDHYioj3TGQKV46HIzmmuIHclkcH4rPJ32WOucd/1xTSw3Zxn56U71E8dulMIAbnGauRGspB3An3om7PBPU801nA44GfivZ/vD36UQCcKfzU0IVcjPX4rxO5j7HvXvy8bicULCIAerYwOuaeSC64PXoaZIyqgJYexz2oBu4UB/eoB9aBxLVCQSVprYMfAHzx2qCmsWvO+YA/JwKcmowSKVWRWUc7s0rGpkkt2yMDuKa5K4GBk9BjrVNqPiO3tAwjDSyc9ThR781jtU/aE0bYilMrA/lgQED4LManLJGI8cUpdHR+S2DwRRlmCr6uCK4u37TbuOdwYHyvO3zMt/AcUe3/AGuLG+bu0kj4yCcMDS+5Mp/NM7KsijkkUquhPQZ965Mn7XrUKS0R8scFlAwPjrVvp/7Q7fWrZo9KeF50/MpYFlHuF/rVYSU3SJSwygraOjhQ+Tyx6gdaaWhWVVMiI5P5cgGua3GsahcS4lvJnIO3y1kKjPsQOhqN5wjX99sE7n0p3yO5P/OlaVhf6Z1M6u0aSf8AcQN7bhUdtOsQ5zaw5P8AkAzWdh8YIIFS7iaRgB+8iHB+SDzV3aX9vqUIms5VlUHBPQg/NI4tDqS+CtoOlM25tPt2P+aPNOGgaU3XT7f7JijB1GWOKqdT8UWtgGSMCeUccH0j70NsJLk8OaIGLNp8OQO5J/rWZ1wada3KnTxbhvysYwDt/wB6hXeqalqZzLK3lHpGuQpH07/eokbhWwXA2/OMU1AIzSbR6oyMH/F+ppkzxY/dnfyRnH9asJJk/MJo1z2yCf51En1LTlRUn/fv16FsfpxSuLYU6IyRxoA7LkYxlutPKMAP3Qxjim/itFkyhAt2Ofz5QD+lSF08MoMd5PtPTy5wR/Oh6hvYzqJyxwrYHz3rxQZyWx2ojrwSvHxQ25TcRyOlLYKGyBOhOQT3pjAhh6sZ4605ipBx0+TQnKKoJOB24rrOFOV7jOe1VWq6tJbMYLSzkvLg8lQQqqD3JPAFSZZ40VnYgKozk9qwN74k1O/aaPw5ASgYhpivX53GpZMqgtlceJzYfVH8ZSFngm0+MjgQxxGQj3yx/wBKzkuv+J9Pl2ahbxyheuVMZP0PHNUuraz4t0hHuLq8fYThmhlRwpPvgcCmW37QruSxMOpRC6iZSBKmAc/K9Pv1rBLK5dHpwwKOmi+/6tkZxi6js3Y8Jdj0M3tv7H4NLP4j1O2VvOhSOQddw25+o6H7VmrvWLV7KdhAkKzqoaKTEin6E/H6j9ayc+qXQ2ok8otgMBFJwnwuc8fFCMpPsq8UF8N7qXimK7tCk1sCwPI3ehvc4rPS31rM2JZ/LzxtcYUfccVTDaArMrSoRkMSSMfaodzE0pJgZlb/ACvkV1Ww8UlovL8PawiW2MMkf+Rwc+/SqeXUfMB3RAMOc7cmq0RXSS5LEr0OfelYlW/eITnpzwPpmqpkx0jxyybyq5HGdtILuOKRJoCY5Y2BSROGU+4NDkijMQKyKTnptx/Go/l7SQuT9Rzj3poivZ03Tv2qBraJdTsJJbkLteeFwN+OhKkdanP4+0ZrpZHt5gzkZbzA+PsMfwrkZbaRtBUrzkd6lGJJ4A6tgt3HUGtCzTitMg8EGdvsdYOpQGbTbqynT3jU7l+oJ/pXku9Ygu2uLe9e2dhhjEApI9iehrh9ld3um3ST207xyqeHXg/euh6R4/guLLyb+U2l0oAMmPTJ9u1Xx+RupGTJ4v2Js7jWdekG1tWu3jIwR6Fz9wKgkXQG8mRs/wCKQjNBtNbivFH4a6t5QMEgjP6ipE13c8u8ULHHYkAVthJS6MU4OLpgdl48hQRru9sknP3p/wCFYD97HHtHYNT/ADdSkUssMagLxnIoLTXsWWaBCMf/AHBmqWiYVbK2m9IgaM9dyMDj7U5tOMBDmYEdMA4P1wcioj3RkI22wDjqQpakX8S4YmF9uePQcCu7DVBQ8gZt86kY9KsdpH9DUJ4Duz5YbPOfKJz/AOk4p8rMinzI3CjvyAP1oBkiBI81h8Y6UXFHWz6GU+ok8k0OUjgL396c7EoSDkHuKZjGCpz3Oa8tmoHLHKSGQgfXvQ5QFTBPq9vepJYlTuOPeqfU1muP3ccrxptJOw7WPsAe31pW6Q8VbM34x1GS1tGhlMcULD1MCXYj2A6D71j5/HVt+BXT7G0WK1hGCTLhz7kjpzVjqmg+KNWuPw0VhFb25O0SNIG4Pckjmsf4y8DzeEI0vreaa7t5MJOHIyGJ4Kj2rzpqU2enh4RSTK7W5RqZLWFzvt2JXy5BtKH2b2rOrp7xxMsjCLJ4AOSR8VHnvVSZ5raOdZM5YqMc0L8bc3EpllLkEZbOefqe9BRaNl2S3Yh1QO0m3gDg4HtXvLnkG1beNYx8gGh2kU8zFh0Pv0/QV5jPLP8AhoAZHBwSi/8AMUdnDfxbWgMbWzqCD9vkH+lR9jXcxaAFA399uKsk0e82HzmliGfkVBvLA2r5a7De2c4IopivQWdIrVAqvK8xGSOv3xVdNfOgMYiz9QBSTXropSNVXPUgHP6mq/a7Py24noDVUkRcgz3YdjlDn4bpTTMzE9v5VIgsZrhxGgXe3AULzSzaYLe4EE0i7l4JUk0eSQOLYCNJpwfLQsBzkVNtEf8ADyK67mU8E8GpEdutuMKy7Bwq5GWPc4oRkIlHC4/l+lBy/DuIwW7TE+oouMZ6D9aBdwTROQHMgU8HNSpY9wLHcv2wP0obxTrCGVwynrg/0opgaC2E6B1feYJUGQyg/qK29t4z01IFFxITKoGWUGM5xz8GufJM8bldgYDuTk1Z6Tc2sN8JJ9KjuIVPqU46H696ZTkumI4Rf+kdW0efStbGY792wA3lg+r/AOPmr1dL06M58hWx3POfrmuYao2k+XFqPhlZoZiMPEqELn/Eueh9x3re23ibS4bKCa61KCNjGrMjEluR7Y45rVjzOWpMw5vH47ii3TyRlWXYO2OP5UyZBbgMWIVujPhlB+9It/b6hZtcadNHcR9PQen1B5H3qG80gy+WQEYYdm+taIyT6Mzi12NuX2ybW25PKuCcN8EHioEkdg7bpVAc9cDg0OedlUqZCAe3UVHxu5OCD0ye1UsSjv4UDHOKbsVWLY6fwr3ROv1rxxIOuGH8qxWXPAh0/L09qq9UukgjdlILIMkf71ZsNikMOMZB71R31va3EMziaQgHDBCDz/ztSSehoq2c0vPEup67e3DW+oDTbW25M88jxpu7KABz0rFeKPFGsalZPpt3qZms2kH9xV345Bzjdj68mjeO7/8AsnURaJvKkmT09c54rCalqDXs4AYsoXGAOR7VgUm2exGEUui3muYrYKkTqiqN24cBfb9f+dag/jYrpQ/EaDgA4BY/Qf1p1ho09/EZp8rGBtAxgn5zQ7/TIbXHl5dR+Zgc4HtTOSHUWT7K4e9uxBFlYj1YDkD2FRp9Z/AyNa6UigA4MnUtRrKJLaxmYYBGOM+4qgEISfLnnJPHel0xm6NFp2o6xcYldUlTuC/qP2oupJA673tlhfGT6xz9qrrWRZogrnbFAN0jk8/AHzViVt20/wA9o0PpLCPPJA9zS9Ma7WzKXCtvJUEqemaLY2xkhZipJLBc/FSDHJIk87AjYD04H2q402GBNHkE2wb+TzzVeWiEYb2PguF0mNSqlyVOcAZ61nrmc3Nw74Zsn44o09zIkksYbcG6nsT8VKsNInngWcqBGrhSSfek0tsq7ekASGRclZDGccjqR9TTJRgK2XbJ/M3U1pJ7CO10p2ZgJdxBxg5GOKBa21pfeIIYSqCFYPSGOBu+aZST6C4P6UlpbXF5cpDFDkyHjJ/rVg2itEWV3QlTzszipt3eR6RNcGNAzovlxN7k9Tj/AJ0rNT6tPdShNzlMjOP73vn3oJuW0I4xj2TJrVo2DKUkzwMigMkjqWjCgDjgcj/SiCZXjKudvfJGDUY3W1yD1Pv1P3p039EnVaFjSaIl9xiJ4ODjIqTb6hNbMzLK6K+ASH9agexPI+1Qpb/c4AIP1pfOiaMDcAwHIYH+lORv8Nfo8ZjlintHkMkyEel97uvv7D65ra6cNUuoEilnhlAH5grD/wBxPq/SuOw30lqmyCUrGTnaOx9x7Vc2HjTU7OZRNdSToCOjElew4PBqkHxdkMseaOqHSEOBNLPNjnaiBV/UmpEQhgjCJbTMPcsCT9ageH/FNlfWiC6vFfPAkT0qfgjGVI+laiG/shEBG9oUHTJJNa1NMxSg49nTllRl7c4oVxNHbIZHdVVeSSe1Y+z8QT2ugxyXjebfy/vGUN6I8/lBPbjnAqh1LVrrUWxNMxHZcYGe2BSqIGzR3uty61frp2lkokhw0vsO5H2qbqd3baH4ekaQYijTbheC31J/nTfC+hSWFs13cqUuZ1ACnrGvt9T3/Suc/tN8R6kmqz6IEEdvsDZcZMgPTHYCs+eaijR42P2ToyPiswa9frNaK8MQXYxJJB+B3+9UJsLexmhieWO3Rz+8dfSf9R7V691G6tLQwBvKVR32lsfUdKrtIuAb0MxCk8bm6gd+T3rAk30e5qKo0ep6gsMKfg5okjUDGcMAO3xWTvb6W7O4kOoGGIGO/GfvTL/UPx2oKrKI7VDwg43DPerOBobwyPFawqE9MYA4H600YV2I8l9FQ17JGrDGFYbW/wA1Qprwsu3cGA5HxRrgxo5jBjbB7f60S7tIFsomRhvIO4Y7+1WRGaYO1kjksXRnYMxy2DXmvZGkUltzBduQOo6VWhzlQPtUuBGlJ9LMOtM0iaky+W8ia3VPThkwwPvioEl2Pw5hAAxxknNOg0q7lTMMbAsOAeM/rUK8hu7eQpcQPGy8epTU6Q/Mas4EqGQk4YHpWt1XWoYrQwW5URsMkjGelYgnPTOe9PkndiqknK8Ci4JnRyuKdEubVLmZBvcuVJOTyemP5UyG/aOVHycquODUHcVGB75NEH5c5wfcU6il0S9kn9DXF68xKkZz0FGspvIhYiElu7Z/pUKLI4KZ54OavbLTRLFvDelhhu9B6HjciDPdNOhYw4XHXOBUJy+dozj5q61BFt12RqEH+LGftVJJIckBy3x2zRWxcmgkEQkbBAzjk9K0MNh4bu7CAtd3VncsMSLt3oD8fB+tZhHdWyAOfmjrIGOehHc0xNM12meD9Ivpdh8QQxDPDum0AfNWt3+yu4KKbC8gukPIkORuH8qwUdyYG3Iw29PrWt8KeM7vRrkF3LWuQHjbLI3wfb4NFU+zpX8LC1/ZfqAK+ZJFCw5yJ2B+nAra2nheC2tUil3llHUXE3P8aSy8f+H7xCZ7ia2kH911LA/AYdf4U9vHHhvPNzcg/wD6Sf61ohiUtoxzzNPZYxJ5dpGg6hcKn/P51tPDnhdLVEvb1d1x+ZFJysf/APX8qwqBw4eKVUkzuyo5z9zXQdE8Ti/ljt7mLyp24DJyrn6dj/CnkyCND1+lZ/xN4T03xVbLHewAyR/9qVfS6juNw7fFaAtgc4P3pjjgdQO2KhJJrZWMnF2j5o8beD7fRb8LCsmzJD+YwLK3bJ9vasPNCbeQlCQV5GDxn2r681PQ7PUJFuJoY3kHfb29j8VzLxh+zyCad3hhCpO4Z5Y8ZjXqW28DA/kKxcHFnp4/IU1T7PnuSRmlyRjGQfanC6njiaKNtoYeog4yKtNX0+C2upbeyuPxkauQswQqHHuAe2KpREY3Cn1ZIxz2qqaC0xpfaSCeaRpZJBznHbmty/hK3l0iOe3lLSMM5PQVXy+G2tIt+5nbulL7IneuRmbaBpZCNvTrW28P6SZGDMi4A5bFN0jw+J5lJTjpn2NbFbFdMtlwuFGM96jkyJrQ0YDLbT443y6DcOfV1FW0el2t7AVmhjlRl27XGQRVJJrUEDKZoXkjHXYeQPvV3pWt6VdKq2s4OOSjcMPsahbLcUYXxR4NSHzLixjCqM+gdgPasFKnlOVxyPeu63sa3k6eWeMk9MVhNf8AD0X4x3WIAsTypwM1pxZPjIZIVswDMAdpTmlOckYyKsrnTmiOSp+me1BFvjd6QQPetKZnIakggAHI6EHpUuHUpoAQhOT70FoxzjOPagjAOADt6Guewxk10FuLqWb/ALjFh2Gcio3mk9D6fpmisEcYQYagbNjYx070yoSbb7CK24cNjPc1KWMFC+c+9RdgyCHB4/L7fWjQMVBxnDDGM5x81zOgOVgvAJBHY1c6bBeR27Xmn3SxNGcOgkCsQfYdxVMoXbgn1fI4+tHABA8qQhyelJRWjVWU2kXL/h9Rtxbu/AmjP88/Na2307TUt41EME4CgCTaG3fOe9c/0HTdLubwJqs02zv5Zx/Hk11PT7CxsrNIrC5hS3wCBu39vcnmmeTirJPEp9m2T9nF7FIFhu18vpuYg/w61o9I8IQadPHPJcyTtGeAcKM/QVoznFIzc4BGTVXJmKjzDjmmHGQpGa9NcRxRFpZERR+Z3YKP1NUtx4y8NWblZdasww6gPu/lmltfRlGy5Iyrbu1ZbxzayNojCMnYyOHweRlSP+CvT/tM8IxIQdZhPbiOQ4/9vSmR/tA8HalD5J12yPYpLuQH/wBQFJKpIpBSi7o+edV0HUlu58LLIpcGFwu5SpGT6unHtUzw5+yfWvEETTbRacho/wAQCu4f5QB/Emu/adoPhB7gXOm2+m3LOd26KRZMn6Zq01G7s9J02a7uMQRxqSc9/gD+VQhCX/RuyeQnSitnzy+jDT7i5sDPL/4Zyh2t6WI74qwjslkh4AbPAqPNPJdXd1dkFTcSOxB7c5Aqys51liUkEMF7e1Zpdsqm3R6ygSzcLxkdOBVlcxLcWxLDIcbcjgmosiArlV5HPT9aKshaIKTxnnFRey8DB63ZX2mTPLEwliOTtIIYD+VZZtUK3PnRnymH91TjB+K6vqcPn20qhCd67frWEn8OaXe6bfxoskOoWqh4wpC+YM8k/H0rViaemSyqlaLPw546jBSC9XcSQvmnt9avdSktp29DDe3OD0Irjz2d3B+YNhf8Q6VcaZ4lu7eEQSkuvQM3JAqssSu4kY5W/wDRodQgjS43BSAeq/NU9zCN7KOMDvT21Q3Exf1FQD6qhm7BeRj6QegoxsV02QJsxBgc56VHKqsWWI+BXp598pIyw9hUaZ2LYOcnnAHSrpEWxynY3OcUSVcgHGQP1ocSs5VVBLdh70YlovzKVJ6AijTBaBK4J5+3NHiRiQ/IX6UEq3GBkH4qVa20r+rPlj3bim4tippGq0fwzpmoWfmS3kzP03RYUL9c1Z2/gPR0mK3Or3LDGdqxKpJ+pJrM2mpixfcWw2NpaM43D5qQ/ih937snpwSeo+9FwtHLI0zQXHgnSEkLW2rXcLLxtdFbn68VJt9MtrKMxDVec5OcA5rFT+IZpmOWLZ7dvrQH1aV2y2XPuT0+KmsN9s73H1fqv7R9F08lYp2u5BwRAuRn6nisZq37StYvz5dkEsIiOqDc5/8AMeB9hWdS055AHt3zT2sgGO1QT3+lYZ+S31o1x8WK7IVxfXuoSNJeXE9y3/5XLYoKxl+cBfYirkWJ2kkYH1ryafsYgqR9+KzyytmlY4r4U72byMSCw98/70CXSFcngn71pk092PHA9yaIdPkCAccdcVNTaG4oxo0Vo33RZV+TuUYP6ilurvXXtI7GTULmWCM5EbSllBHTrmtl+EwpBHegTWKMRiPn9MU3ul+g9cTGR3dysTRyxBwemOo+1TtHvk3FTnK9A3GauptKiP8AdGSOgH8frVPeaOyElByPjpTLJfYrhRfpIs0WF79fn5qM0v4ef82B2zxx/rVJa391YuQwMkWOncfepz6lDcQEh1I7dOKKVnW10HubkMQydfbFZbxBH+IZZojsmX8rjrVw04ckRhmUdcDtTAkhTcUG0dOOlUWg3fZjLWw1bVrsWkdn5pY8v5eAPqelaOTwPFaX8SMWfBKSqRypHz+tXNtfTW3WIccj1Yow1fDhpI5JSW3M24Emnc2+jqj9MT4it7XTN0cCqu0ZrJljO+CwUHrx79a1fiuC51G882CIiPJ4OAaoXspFBLwlOOu3g1oxvWzHPsHBbx7SgUOWOM+/0qLJbSi58tkIkZgMH3rQ6PaYxI+A3ReM4/0qXeWdvcy5f0N0DKMY+c16EcDlHkYHmSnxKF9Kvra6Ecls0csbYIwcZ/qPmtbFFAsMTXESKygcON2D/wA9qadZuLO1CfiyZVXG7PBqCP7T1p9lqkki9c4Cj5opRxK5MRt5XUUB1K5tWYtDaRLxziMLVHNK7cZYDrzxWwt/A97KM3l0kZPJVRk1LTwRZQMfMMknPOTWaflY09M0w8XI+znvrY4z6j3NKlpI7erjPsa6DJ4TtkPoUD69qZ/09bQ+p4w2R1Az0/51qX9SLfzsw34VUwSRkdjxTgqgY21uo9K0sf8A0IienqHNSRZ2SDC20WPbaOP1oe8H87/TbRQgkdcGixQkuVCjHv3IpC3OccY7HmvGQqwbGCO4PFeC2eutBjGc4Hbt8UdEUrwMGo/4nbhgx+9ES72ncRkEcAUbA9khI3VsbuvX4owTjH5gOelRluF3EY+nzUhJww9A4I+4prQjR4wjoAw7kHmvfhhvGQc/FKJumc56GkeYx8HqR2FC0GmR54lIPXNVlzENoBUH69R81NmlmlJKjaM9QaGlue43Z6/FEaihn0n8TIScIO+BzRItDVHw24nGTx/OtDFCmQOw4HwaOLbIGBgn2puTFaRSrpUSIFAGMZANK2l+cpAUcCrxbM9SuM0/yVQZwAe2aNs7RmX0CU5K/T8tAm8PzquSVZe5xWsdZD0JBB4oLIzDJP8AvRU2LwTMRPptwp9KAnGPy9P9frUCTSpfMxJajHuOn6Vv3tlY8Ajn/maY1iGABHOcDFMsorxI52dBiDbohNFjn09KFc+HvNdiXuGJPY/0xXRxpgJyVXnvUmDSo0YE4PQVReXJaTF/nhLbOc6V4PjF15txa3NwowViY4Q/JrXLaXUESpbWEUAX5zj6VqY4YoQAFxxzSyBMc7cmpyzSntloYowWjEXNreSMWlQN74HNAWJgAro4A44GTW2McR5IUZ79aE1tCTkYx/OgpX2hqMmJcAL5Dv3HFR2ufzKyFTnpt4rT3VtHtLRAYwcj/asnfzyW7FkCs3cf61RCSVIH+Ghl6AkfHSvCzWNQAjkEZqPDqa7DuYJIDwelHfU4mbcRknk44qqtEGaQv6Og29RRFcMvI4J4+aD6Qx56c9Kcg3Hg4HvWCjY0HIUuNo57EinrGWUAHDZyKYEGFXIyO9FQlSBwBmu0Kx6pjknBB5qREAudhAHemDLLg460UDCAdcdMUKOQ8NhNpHNDyJHwQfqDRUjGNvGV5pQqh884+ldQbGGBOuDRYocnBUcDNIrLvA75xmn7/VxTJfRXbPCLDer+Bo0Srtxx/tQTJ6d2Q3zihmVm9I7U1k2EmnWNwqAnPsf414AycMNq9zjkZryRKMs3qJ96IcKPSBx/GiE8EULzz/Gk2Et04J96ckkYbJAGc/anFkKjA6dsUKOsGYsntnPNNWEE+nii71By3GB2GaGZcqOcqe/SionWxREqryQT0yDRVUbeMerpmonngDnoevFea4ABIbGR7c1yQbZJZMLyeDz0oDxBuN4+RUc3IwTlSfbNRjf859uhFcFNhmQIchiaapCyZBOewPao0lzucbvUDzRDKpyBzxSoe7H3r7UyBnPzwaxOsKfMLbgpIyAK1l1dxpbYPJK4A/3rCeINTWBmUgHHQ+1acW2SydFJcz+VIxJ5Bwc9KivqR3YDHA461UXF88kxds4P616Mh0BZwD81tUTG5M6zFdEv6mAx1qbHewjADr81Qz27EYU4P93PHNVM638THyzx3B715qgpHoN0bhdRiU7dwJJ/hRor2N23buTXLJ7/AFK2/NGQD7c8UCHxXPExB3DHx3qnovol7P07IrjpuVl7HPWjJMw6HPYcVyu18fNEwVweB3FaCw8c2dxgFgPv0pHgkgrKjc/iBkEDhuT804yqR1yRx9azcWv2sy+iTGe+aOmpxE8yg475/lU3CSHTTLrzNoz0zzgjpSrPlQDyxHX3qlbVISBvOD9etL/aKgEqeAeTnrXcGdZbGXLFS3H8PtT1nUMM5+/eqNtTQHaCGx07ZpDq0Q4Y4PfJ6UygzmzQecOGRguBwMcin/ilIJLkmswNXjGRnJ68Gm/2omQwccjjnFMoMRs034kbwfM46Upuk3jnhayTats/vLgHqTQTriebxISvT0ij62LaNe85JzkY6fShvM24neAPrWZj1+NT+cY68ZwKd/b0bZBZNp55Nd65B5ov5HDZIYFegHWhkF1JLYz+lUn9uwldu8Bjwa8NaQJncMDsOfv80eLQOSZctC558zmlW3xgu/QZwKov+oEJA3A/APQf1pj+I4w3/ewO2eKHBtjKSLyQrEDg9OhPNVV/q8dqWbeM9yeKqrrxBHPlRJjIx1rPajcROrF5MexzTxwv6K8i+ErVPFu1XCbg5/LtNZC7v5ryQs/I9s5FDupQ0xII5/SnRxgH1Y59+5rbGCj0ZZScmA28dMj65rxRDyVz9qkrb5bpx146fWiLCQOv8KewUdamgCHJDbhzgiq67ljiiYMFGehq6u4ZE3FWJ/ynn/4rH6vFI5c+eFAPt0rxoNs9ia0Vt/ern+7x3NZ+7u4myQF656d/arGSxSVsFpHJo9v4ZNwQIrdiTxl8mt8ZxijJKLZlXYyD0qcEdaZ+FnK5WNjg9R2rqWmeAI1KNcgyORgL0ArRQeD4owB5KFT1xx/Kg/KS6RJYL7ZxCOS+hbCPIpHQZ/pUyPxHqlqcOxYe5rsN54TiaMlolI9tvArP3/hS2JZVhXjsRigvKg/9ILwSXTMRH4wmHDIeDnrUuPxhkEElSe1e1Xwz5J4TZ/5e1Z+bSZoz6RuHvmtEXCStEXziaVfFCOTl8E8/WvP4hDYIkxx71jtjxN61IyODTsEjg/oaf1p9Ce1mrOtHtJlvrxQn1+Q/kIP1PFZpVfBY5BPfPFGhPqww7d671ne1lxJr10/ORn2zUVtYvSeXOPpTGsFni3RMVPcDoar2iMTFGBBHuabiiTyUWY1O63bjOeB70jaxcHgyD45qs2g9RSlFHz8U3BfQewsBrM+NqzsR8dqX+1r0A5Zj7GoKBY1yTj4o8LibgOqnHINDig8rCnVbpeGfGDkZNMfULuU/nPPtUO4IDYXp9c16NyF5J3Zp1FCcmTo72ZMsAA3fmkkup5wqkEoP7ue9AikAcnrmjRlT+YFVzwc9aVodN/RqKQwzGSM5xUyNTjpkjkDNIkAc53gh+54xW+/Z74Ak1y9jvNQQppkZBCngzY7fC/PehViuVA/DH7MNf8RaWmox/h7K2m5jM5bc6/4gFB4NaIfsT1xgC2qWDn38uU/0rsWnrHawLDAm2GMYUAdB8VJE8jDIDY+g/wBaHAX2yOX3Nnu4LEKetU11pFmjNvQyY/xHpWqvBtBxWe1FiIXx7ZrwkfQ3Znnjhjm2xRr/AOUfwrR6NYrIuWB5Ixg4xWYtx5l6MkjLY4rb6Wg8nAGMCnZKZbC2jRG2ekdzT0ZkXC4yf9KRCcgfSnZ2lQMcsc/pXUQsiTo7NtLEE9vmoM1grgnJHPT3q4Y7uoHGcVF/7m8N26VJopGTRm7rTlYMCm9T2IrN3+hQlslVjU988n6VuJWY/wB41R6gfzH5owm49Dtcls5/qPhr0swPmDt7is3caXJAT1HsK6dxJvDAcMcY+lUWo20ZSRsEHbnit+LM+mZcmJdmHWFsc4HY5pfLUMCOD0NTLgbW47GguxEQ+etbk7MTQa3cxc89cge9HvIYryH08SDlfaoNvI3BzzzzUuGVg3GMV1goippVxIuRt46jNGXRrg4ztBz1zU3z3jG5T1HTHFPaaRc+rORnmu5sHFFedDnZssVyfY0JtButx2shxz1Iq2WRzklj196PCS7YJ4/2rubDSM82i3i5JjD/AENCbT7qMhnhZV6ZxmtMHbdt3HFOEjAHmu5sKSMoInVuc7qlwK7gL0x8dq0SxRzgCRFYN1yOf1qy8J6TZSeLLUzwC4j5YwyElCR0JHfHX2plKxZaRb+BP2cT6y0GpajC0enH1xo3Bn+cdl/nXabayW1hCxIFVOvQf8FOhnddqgjBAB4+KllcsQSTxTIhJsNZyjaOcg/mzxiiM4LnMypjpgZz81EmPlqAO460VY1ZQSMk0wp//9k=]]
+
+local B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local function b64decode(data)
+	if crypt and crypt.base64decode then
+		local ok, res = pcall(crypt.base64decode, data)
+		if ok and res then
+			return res
+		end
+	end
+	if base64_decode then
+		local ok, res = pcall(base64_decode, data)
+		if ok and res then
+			return res
+		end
+	end
+	if base64decode then
+		local ok, res = pcall(base64decode, data)
+		if ok and res then
+			return res
+		end
+	end
+	data = data:gsub("[^" .. B64_CHARS .. "=]", "")
+	return (data:gsub(".", function(x)
+		if x == "=" then
+			return ""
+		end
+		local r, f = "", (B64_CHARS:find(x, 1, true) - 1)
+		for i = 6, 1, -1 do
+			r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and "1" or "0")
+		end
+		return r
+	end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
+		if #x ~= 8 then
+			return ""
+		end
+		local c = 0
+		for i = 1, 8 do
+			c = c + (x:sub(i, i) == "1" and 2 ^ (8 - i) or 0)
+		end
+		return string.char(c)
+	end))
+end
+
+local function loadLogo()
+	local ok, asset = pcall(function()
+		local data
+		if LOGO_URL ~= "" then
+			data = game:HttpGet(LOGO_URL)
+		else
+			data = b64decode(LOGO_B64)
+		end
+		writefile("lucifer_logo.jpg", data)
+		return getcustomasset("lucifer_logo.jpg")
+	end)
+	if ok and asset then
+		return asset
+	end
+	return ""
+end
+
 local CONFIG = {
 	HoldTime = 6,
 	Range = 200,
@@ -108,11 +171,26 @@ local function isToyBoxPack(prompt)
 	return false
 end
 
+-- CHỈ nhận 2 loại thùng: "Trash" và "Dumpster" (ActionText phải là "Search")
+local FARM_OBJECTS = {
+	["trash"] = true,
+	["dumpster"] = true,
+}
+
+local function isTrashPrompt(prompt)
+	local objText = (prompt.ObjectText or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	local actText = (prompt.ActionText or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	return actText == "search" and FARM_OBJECTS[objText] == true
+end
+
 local function isPromptValid(prompt, part)
 	if not prompt or not prompt.Parent then
 		return false
 	end
 	if not prompt.Enabled then
+		return false
+	end
+	if not isTrashPrompt(prompt) then
 		return false
 	end
 	if isToyBoxPack(prompt) then
@@ -852,28 +930,87 @@ pcall(function()
 		end
 		return oldIndex(self, key)
 	end))
+end)
 
-	-- Không can thiệp khi Auto Farm đang điều khiển camera
-	if not aimbot.enabled or state.running then
+-- ==================== NO RECOIL ====================
+-- Quét các bảng cấu hình súng trong bộ nhớ (getgc), tìm trường có chữ "recoil"
+-- rồi nhân với recoilScale (0 = không giật). Lưu giá trị gốc để khôi phục khi tắt.
+local noRecoil = {
+	enabled = false,
+	scale = 0,
+}
+
+local recoilOriginal = setmetatable({}, { __mode = "k" }) -- [table] = { [key] = giá trị gốc }
+
+local function applyRecoil(scale)
+	if not getgc then
 		return
 	end
-	if aimbot.holdRMB and not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+	local ok, objects = pcall(getgc, true)
+	if not ok then
 		return
 	end
+	for _, obj in ipairs(objects) do
+		if type(obj) == "table" and not (isreadonly and isreadonly(obj)) then
+			pcall(function()
+				for key, value in pairs(obj) do
+					if type(key) == "string" and type(value) == "number" and key:lower():find("recoil") then
+						local saved = recoilOriginal[obj]
+						if not saved then
+							saved = {}
+							recoilOriginal[obj] = saved
+						end
+						if saved[key] == nil then
+							saved[key] = value
+						end
+						rawset(obj, key, saved[key] * scale)
+					end
+				end
+			end)
+		end
+	end
+end
 
+local function restoreRecoil()
+	for obj, saved in pairs(recoilOriginal) do
+		pcall(function()
+			for key, value in pairs(saved) do
+				rawset(obj, key, value)
+			end
+		end)
+	end
+	table.clear(recoilOriginal)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(1.5)
+		if noRecoil.enabled then
+			pcall(applyRecoil, noRecoil.scale)
+		end
+	end
+end)
+
+-- Chống giật camera: nếu game giật bằng cách xoay camera, bù lại phần xoay dọc đột ngột
+local lastCamPitch = nil
+RunService:BindToRenderStep("NoRecoilCam", Enum.RenderPriority.Camera.Value + 3, function()
 	local cam = workspace.CurrentCamera
-	if not cam then
+	if not cam or not noRecoil.enabled or state.running then
+		lastCamPitch = nil
 		return
 	end
-
-	local target = getClosestTarget(aimbot)
-	if not target then
-		return
+	local pitch = cam.CFrame:ToOrientation()
+	if lastCamPitch and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+		local delta = pitch - lastCamPitch
+		-- Giật lên đột ngột (không phải do chuột di chuyển) thì kéo xuống lại
+		local mouseDelta = UserInputService:GetMouseDelta()
+		if delta > 0.002 and math.abs(mouseDelta.Y) < 1 then
+			local fix = delta * (1 - noRecoil.scale)
+			cam.CFrame = cam.CFrame * CFrame.Angles(-fix, 0, 0)
+			pitch = pitch - fix
+		end
 	end
-
-	local goal = CFrame.lookAt(cam.CFrame.Position, target.Position)
-	local alpha = math.clamp(1 / math.max(aimbot.smooth, 1), 0.02, 1)
-	cam.CFrame = cam.CFrame:Lerp(goal, alpha)
+	lastCamPitch = pitch
 end)
 
 -- ==================== ESP ====================
@@ -883,10 +1020,30 @@ local esp = {
 	showName = true,
 	showHealth = true,
 	showDistance = true,
+	skeleton = false,
+	skeletonColor = Color3.fromRGB(255, 255, 255),
 	color = Color3.fromRGB(255, 60, 60),
 }
 
 local espObjects = {}
+local skeletonObjects = {} -- [player] = { lines = { [index] = Drawing }, char = char }
+
+local R15_BONES = {
+	{ "Head", "UpperTorso" },
+	{ "UpperTorso", "LowerTorso" },
+	{ "UpperTorso", "LeftUpperArm" }, { "LeftUpperArm", "LeftLowerArm" }, { "LeftLowerArm", "LeftHand" },
+	{ "UpperTorso", "RightUpperArm" }, { "RightUpperArm", "RightLowerArm" }, { "RightLowerArm", "RightHand" },
+	{ "LowerTorso", "LeftUpperLeg" }, { "LeftUpperLeg", "LeftLowerLeg" }, { "LeftLowerLeg", "LeftFoot" },
+	{ "LowerTorso", "RightUpperLeg" }, { "RightUpperLeg", "RightLowerLeg" }, { "RightLowerLeg", "RightFoot" },
+}
+
+local R6_BONES = {
+	{ "Head", "Torso" },
+	{ "Torso", "Left Arm" },
+	{ "Torso", "Right Arm" },
+	{ "Torso", "Left Leg" },
+	{ "Torso", "Right Leg" },
+}
 
 local function espParent()
 	if gethui then
@@ -898,6 +1055,16 @@ local function espParent()
 	return CoreGui
 end
 
+local function clearSkeleton(p)
+	local s = skeletonObjects[p]
+	if s then
+		for _, line in pairs(s.lines) do
+			pcall(function() line:Remove() end)
+		end
+		skeletonObjects[p] = nil
+	end
+end
+
 local function clearEsp(p)
 	local o = espObjects[p]
 	if o then
@@ -905,10 +1072,16 @@ local function clearEsp(p)
 		pcall(function() o.bb:Destroy() end)
 		espObjects[p] = nil
 	end
+	clearSkeleton(p)
 end
 
 local function buildEsp(p, char)
-	clearEsp(p)
+	local old = espObjects[p]
+	if old then
+		pcall(function() old.hl:Destroy() end)
+		pcall(function() old.bb:Destroy() end)
+		espObjects[p] = nil
+	end
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then
 		return
@@ -942,50 +1115,118 @@ local function buildEsp(p, char)
 	espObjects[p] = { char = char, hl = hl, bb = bb, label = label }
 end
 
+local function shouldShowEsp(p)
+	if p == LocalPlayer then
+		return false, nil, nil
+	end
+	local char = p.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (char and hum and hum.Health > 0) then
+		return false, nil, nil
+	end
+	if esp.teamCheck and sameTeam(p) then
+		return false, nil, nil
+	end
+	return true, char, hum
+end
+
 local function refreshEsp()
 	local myRoot = getCharacterParts()
 	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			local char = p.Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local show = esp.enabled and char and hum and hum.Health > 0 and not (esp.teamCheck and sameTeam(p))
-
-			if not show then
-				clearEsp(p)
-			else
-				local o = espObjects[p]
-				if not o or o.char ~= char or not o.hl.Parent then
-					buildEsp(p, char)
-					o = espObjects[p]
-				end
-				if o then
-					o.hl.FillColor = esp.color
-					o.hl.OutlineColor = esp.color
-					o.label.TextColor3 = esp.color
-
-					local parts = {}
-					if esp.showName then
-						table.insert(parts, p.DisplayName)
-					end
-					if esp.showHealth then
-						table.insert(parts, ("HP %d"):format(math.floor(hum.Health)))
-					end
-					if esp.showDistance then
-						local root = char:FindFirstChild("HumanoidRootPart")
-						if root and myRoot then
-							table.insert(parts, ("%dm"):format(math.floor((root.Position - myRoot.Position).Magnitude)))
-						end
-					end
-					o.label.Text = table.concat(parts, " | ")
-				end
+		local ok, char, hum = shouldShowEsp(p)
+		if not (esp.enabled and ok) then
+			local o = espObjects[p]
+			if o then
+				pcall(function() o.hl:Destroy() end)
+				pcall(function() o.bb:Destroy() end)
+				espObjects[p] = nil
 			end
 		else
-			clearEsp(p)
+			local o = espObjects[p]
+			if not o or o.char ~= char or not o.hl.Parent then
+				buildEsp(p, char)
+				o = espObjects[p]
+			end
+			if o then
+				o.hl.FillColor = esp.color
+				o.hl.OutlineColor = esp.color
+				o.label.TextColor3 = esp.color
+
+				local parts = {}
+				if esp.showName then
+					table.insert(parts, p.DisplayName)
+				end
+				if esp.showHealth then
+					table.insert(parts, ("HP %d"):format(math.floor(hum.Health)))
+				end
+				if esp.showDistance then
+					local root = char:FindFirstChild("HumanoidRootPart")
+					if root and myRoot then
+						table.insert(parts, ("%dm"):format(math.floor((root.Position - myRoot.Position).Magnitude)))
+					end
+				end
+				o.label.Text = table.concat(parts, " | ")
+				o.label.Visible = not esp.box
+			end
+		end
+	end
+end
+
+-- Skeleton ESP: vẽ bằng Drawing, cập nhật mỗi frame cho mượt
+local function updateSkeleton()
+	local cam = workspace.CurrentCamera
+	if not cam or not Drawing then
+		return
+	end
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		local ok, char = shouldShowEsp(p)
+		if not (esp.skeleton and ok) then
+			clearSkeleton(p)
+		else
+			local s = skeletonObjects[p]
+			if not s or s.char ~= char then
+				clearSkeleton(p)
+				s = { char = char, lines = {} }
+				skeletonObjects[p] = s
+			end
+
+			local bones = char:FindFirstChild("UpperTorso") and R15_BONES or R6_BONES
+			for i, bone in ipairs(bones) do
+				local a = char:FindFirstChild(bone[1])
+				local b = char:FindFirstChild(bone[2])
+				local line = s.lines[i]
+				if not line then
+					line = Drawing.new("Line")
+					line.Thickness = 1.5
+					line.Transparency = 1
+					s.lines[i] = line
+				end
+				line.Color = esp.skeletonColor
+
+				if a and b then
+					local pa, onA = cam:WorldToViewportPoint(a.Position)
+					local pb, onB = cam:WorldToViewportPoint(b.Position)
+					if onA and onB and pa.Z > 0 and pb.Z > 0 then
+						line.From = Vector2.new(pa.X, pa.Y)
+						line.To = Vector2.new(pb.X, pb.Y)
+						line.Visible = true
+					else
+						line.Visible = false
+					end
+				else
+					line.Visible = false
+				end
+			end
 		end
 	end
 end
 
 Players.PlayerRemoving:Connect(clearEsp)
+
+RunService.RenderStepped:Connect(function()
+	pcall(updateSkeleton)
+end)
 
 task.spawn(function()
 	while true do
@@ -994,25 +1235,204 @@ task.spawn(function()
 	end
 end)
 
+-- ==================== BOX ESP (hộp 2D + tên + khoảng cách + thanh máu + tracer) ====================
+esp.box = false
+esp.tracer = false
+esp.boxHealth = true
+esp.boxName = true
+esp.boxDistance = true
+esp.boxColor = Color3.fromRGB(0, 255, 80)
+
+local boxObjects = {} -- [player] = { char, outline, box, name, dist, hpBack, hp, tracer }
+
+local function newDrawing(kind, props)
+	local d = Drawing.new(kind)
+	for k, v in pairs(props) do
+		d[k] = v
+	end
+	return d
+end
+
+local function clearBox(p)
+	local o = boxObjects[p]
+	if o then
+		for key, d in pairs(o) do
+			if key ~= "char" then
+				pcall(function() d:Remove() end)
+			end
+		end
+		boxObjects[p] = nil
+	end
+end
+
+local function hideBox(o)
+	for key, d in pairs(o) do
+		if key ~= "char" then
+			d.Visible = false
+		end
+	end
+end
+
+local function buildBox(p, char)
+	return {
+		char = char,
+		outline = newDrawing("Square", { Thickness = 3, Filled = false, Color = Color3.new(0, 0, 0), Transparency = 1, Visible = false }),
+		box = newDrawing("Square", { Thickness = 1.5, Filled = false, Color = esp.boxColor, Transparency = 1, Visible = false }),
+		name = newDrawing("Text", { Size = 13, Center = true, Outline = true, Color = Color3.new(1, 1, 1), Visible = false }),
+		dist = newDrawing("Text", { Size = 12, Center = true, Outline = true, Color = Color3.new(1, 1, 1), Visible = false }),
+		hpBack = newDrawing("Square", { Filled = true, Color = Color3.new(0, 0, 0), Transparency = 1, Visible = false }),
+		hp = newDrawing("Square", { Filled = true, Color = Color3.fromRGB(0, 255, 0), Transparency = 1, Visible = false }),
+		tracer = newDrawing("Line", { Thickness = 1, Color = esp.boxColor, Transparency = 1, Visible = false }),
+	}
+end
+
+local function updateBoxEsp()
+	local cam = workspace.CurrentCamera
+	if not cam or not Drawing then
+		return
+	end
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		local ok, char, hum = shouldShowEsp(p)
+		if not ((esp.box or esp.tracer) and ok) then
+			clearBox(p)
+		else
+			local root = char:FindFirstChild("HumanoidRootPart")
+			local o = boxObjects[p]
+			if not o or o.char ~= char then
+				clearBox(p)
+				o = buildBox(p, char)
+				boxObjects[p] = o
+			end
+
+			if not root then
+				hideBox(o)
+			else
+				local top, onTop = cam:WorldToViewportPoint(root.Position + Vector3.new(0, 2.9, 0))
+				local bot, onBot = cam:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
+				if not (onTop and onBot) or top.Z <= 0 or bot.Z <= 0 then
+					hideBox(o)
+				else
+					local height = math.abs(bot.Y - top.Y)
+					local width = height * 0.6
+					local cx = top.X
+					local x = cx - width / 2
+					local y = top.Y
+
+					o.outline.Visible = esp.box
+					o.box.Visible = esp.box
+					if esp.box then
+						o.outline.Position = Vector2.new(x, y)
+						o.outline.Size = Vector2.new(width, height)
+						o.box.Position = Vector2.new(x, y)
+						o.box.Size = Vector2.new(width, height)
+						o.box.Color = esp.boxColor
+					end
+
+					local showHp = esp.box and esp.boxHealth
+					o.hpBack.Visible = showHp
+					o.hp.Visible = showHp
+					if showHp then
+						local ratio = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+						o.hpBack.Position = Vector2.new(x - 6, y - 1)
+						o.hpBack.Size = Vector2.new(4, height + 2)
+						o.hp.Position = Vector2.new(x - 5, y + height * (1 - ratio))
+						o.hp.Size = Vector2.new(2, height * ratio)
+						o.hp.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), ratio)
+					end
+
+					local showName = esp.box and esp.boxName
+					o.name.Visible = showName
+					if showName then
+						o.name.Text = p.DisplayName
+						o.name.Position = Vector2.new(cx, y - 16)
+					end
+
+					local showDist = esp.box and esp.boxDistance
+					o.dist.Visible = showDist
+					if showDist then
+						local myRoot = getCharacterParts()
+						local d = myRoot and math.floor((root.Position - myRoot.Position).Magnitude) or 0
+						o.dist.Text = d .. "m"
+						o.dist.Position = Vector2.new(cx, y + height + 2)
+					end
+
+					o.tracer.Visible = esp.tracer
+					if esp.tracer then
+						o.tracer.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
+						o.tracer.To = Vector2.new(cx, y + height)
+						o.tracer.Color = esp.boxColor
+					end
+				end
+			end
+		end
+	end
+end
+
+Players.PlayerRemoving:Connect(clearBox)
+
+RunService.RenderStepped:Connect(function()
+	pcall(updateBoxEsp)
+end)
+
+-- Gắn logo Lucifer vào thanh tiêu đề Rayfield
+local function injectLogo()
+	local asset = loadLogo()
+	if asset == "" then
+		return
+	end
+	for _ = 1, 40 do
+		for _, gui in ipairs(findRayfieldGuis()) do
+			local main = gui:FindFirstChild("Main")
+			local topbar = main and main:FindFirstChild("Topbar")
+			local title = topbar and topbar:FindFirstChild("Title")
+			if topbar and title and main.Visible and not topbar:FindFirstChild("LuciferLogo") then
+				local img = Instance.new("ImageLabel")
+				img.Name = "LuciferLogo"
+				img.BackgroundTransparency = 1
+				img.Image = asset
+				img.ScaleType = Enum.ScaleType.Crop
+				img.Size = UDim2.fromOffset(26, 26)
+				img.Position = UDim2.new(0, 10, 0.5, -13)
+				img.ZIndex = title.ZIndex
+				local corner = Instance.new("UICorner")
+				corner.CornerRadius = UDim.new(1, 0)
+				corner.Parent = img
+				img.Parent = topbar
+				title.Position = UDim2.new(title.Position.X.Scale, title.Position.X.Offset + 34, title.Position.Y.Scale, title.Position.Y.Offset)
+				return
+			end
+		end
+		task.wait(0.5)
+	end
+end
+
 local Window = Rayfield:CreateWindow({
-	Name = "Mora Hub",
-	LoadingTitle = "Bu Suc 50k",
-	LoadingSubtitle = "nhan E",
+	Name = "Lucifer Hub",
+	LoadingTitle = "Lucifer Hub",
+	LoadingSubtitle = "Auto Farm  •  ESP  •  Aim",
+	Theme = "Amethyst",
+	DisableRayfieldPrompts = true,
+	DisableBuildWarnings = true,
 	ConfigurationSaving = { Enabled = false },
 	Discord = { Enabled = false },
 	KeySystem = true,
 	KeySettings = {
 		Title = "Xác Thực Key",
-		Subtitle = "Mora Hub",
-		Note = "Nhập key để sử dụng (Key: in discord)",
-		FileName = "MoraKeyStore",
+		Subtitle = "Lucifer Hub",
+		Note = "Nhập key để sử dụng (Key:lucifer)",
+		FileName = "LuciferKeyStore",
 		SaveKey = true,
 		GrabKeyFromSite = false,
-		Key = {"Morahub"}
+		Key = {"lucifer"}
 	}
 })
 
-local FarmTab = Window:CreateTab("Farm", 4483362458)
+task.spawn(injectLogo)
+
+local FarmTab = Window:CreateTab("Farm", "trash-2")
+
+FarmTab:CreateSection("Auto Farm")
 
 farmToggle = FarmTab:CreateToggle({
 	Name = "Auto Farm",
@@ -1047,6 +1467,8 @@ FarmTab:CreateColorPicker({
 		end
 	end,
 })
+
+FarmTab:CreateSection("Thông số")
 
 FarmTab:CreateSlider({
 	Name = "Thời gian giữ E",
@@ -1096,7 +1518,9 @@ FarmTab:CreateSlider({
 	end,
 })
 
-local SafetyTab = Window:CreateTab("An toàn", 4483362458)
+local SafetyTab = Window:CreateTab("An toàn", "shield-check")
+
+SafetyTab:CreateSection("Bảo vệ")
 
 SafetyTab:CreateToggle({
 	Name = "Tàng hình (ẩn nhân vật với bạn)",
@@ -1108,7 +1532,10 @@ SafetyTab:CreateToggle({
 	end,
 })
 
-local AimTab = Window:CreateTab("Silent Aim", 4483362458)
+local CombatTab = Window:CreateTab("Combat", "swords")
+local AimTab = CombatTab
+
+AimTab:CreateSection("Silent Aim")
 
 AimTab:CreateToggle({
 	Name = "Silent Aim",
@@ -1146,6 +1573,8 @@ AimTab:CreateToggle({
 	end,
 })
 
+AimTab:CreateSection("Tùy chỉnh nhắm")
+
 AimTab:CreateDropdown({
 	Name = "Bộ phận nhắm",
 	Options = { "Head", "HumanoidRootPart", "UpperTorso", "Torso" },
@@ -1169,66 +1598,46 @@ AimTab:CreateSlider({
 	end,
 })
 
-local AimbotTab = Window:CreateTab("Aimbot", 4483362458)
+local RecoilTab = CombatTab
 
-AimbotTab:CreateToggle({
-	Name = "Aimbot",
+RecoilTab:CreateSection("No Recoil")
+
+RecoilTab:CreateToggle({
+	Name = "Không giật (No Recoil)",
 	CurrentValue = false,
-	Flag = "AimbotEnabled",
+	Flag = "NoRecoil",
 	Callback = function(value)
-		aimbot.enabled = value
+		noRecoil.enabled = value
+		if value then
+			task.spawn(function()
+				pcall(applyRecoil, noRecoil.scale)
+			end)
+		else
+			restoreRecoil()
+		end
 	end,
 })
 
-AimbotTab:CreateToggle({
-	Name = "Chỉ aim khi giữ chuột phải",
-	CurrentValue = true,
-	Flag = "AimbotHoldRMB",
+RecoilTab:CreateSlider({
+	Name = "Mức giật còn lại (0 = không giật)",
+	Range = { 0, 100 },
+	Increment = 5,
+	Suffix = "%",
+	CurrentValue = 0,
+	Flag = "RecoilScale",
 	Callback = function(value)
-		aimbot.holdRMB = value
+		noRecoil.scale = value / 100
+		if noRecoil.enabled then
+			task.spawn(function()
+				pcall(applyRecoil, noRecoil.scale)
+			end)
+		end
 	end,
 })
 
-AimbotTab:CreateToggle({
-	Name = "Hiển thị vòng FOV",
-	CurrentValue = false,
-	Flag = "AimbotShowFov",
-	Callback = function(value)
-		aimbot.showFov = value
-	end,
-})
+local EspTab = Window:CreateTab("ESP", "eye")
 
-AimbotTab:CreateToggle({
-	Name = "Bỏ qua đồng đội",
-	CurrentValue = true,
-	Flag = "AimbotTeamCheck",
-	Callback = function(value)
-		aimbot.teamCheck = value
-	end,
-})
-
-AimbotTab:CreateToggle({
-	Name = "Kiểm tra vật cản (không aim xuyên tường)",
-	CurrentValue = true,
-	Flag = "AimbotWallCheck",
-	Callback = function(value)
-		aimbot.wallCheck = value
-	end,
-})
-
-AimbotTab:CreateDropdown({
-	Name = "Bộ phận nhắm",
-	Options = { "Head", "HumanoidRootPart", "UpperTorso", "Torso" },
-	CurrentOption = { "Head" },
-	MultipleOptions = false,
-	Flag = "AimbotPart",
-	Callback = function(option)
-		aimbot.part = type(option) == "table" and option[1] or option
-	end,
-})
-
-
-local EspTab = Window:CreateTab("ESP", 4483362458)
+EspTab:CreateSection("ESP Player")
 
 EspTab:CreateToggle({
 	Name = "ESP Player",
@@ -1289,7 +1698,90 @@ EspTab:CreateColorPicker({
 	end,
 })
 
-local FpsTab = Window:CreateTab("Boost FPS", 4483362458)
+EspTab:CreateSection("Box ESP")
+
+EspTab:CreateToggle({
+	Name = "Box (hộp quanh người chơi)",
+	CurrentValue = false,
+	Flag = "EspBox",
+	Callback = function(value)
+		esp.box = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Tên",
+	CurrentValue = true,
+	Flag = "EspBoxName",
+	Callback = function(value)
+		esp.boxName = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Khoảng cách",
+	CurrentValue = true,
+	Flag = "EspBoxDistance",
+	Callback = function(value)
+		esp.boxDistance = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Thanh máu",
+	CurrentValue = true,
+	Flag = "EspBoxHealth",
+	Callback = function(value)
+		esp.boxHealth = value
+	end,
+})
+
+EspTab:CreateToggle({
+	Name = "Tracer (đường kẻ tới người chơi)",
+	CurrentValue = false,
+	Flag = "EspTracer",
+	Callback = function(value)
+		esp.tracer = value
+	end,
+})
+
+EspTab:CreateColorPicker({
+	Name = "Màu box / tracer",
+	Color = esp.boxColor,
+	Flag = "EspBoxColor",
+	Callback = function(value)
+		esp.boxColor = value
+	end,
+})
+
+EspTab:CreateSection("Skeleton")
+
+EspTab:CreateToggle({
+	Name = "Skeleton ESP (vẽ khung xương)",
+	CurrentValue = false,
+	Flag = "EspSkeleton",
+	Callback = function(value)
+		esp.skeleton = value
+		if not value then
+			for p in pairs(skeletonObjects) do
+				clearSkeleton(p)
+			end
+		end
+	end,
+})
+
+EspTab:CreateColorPicker({
+	Name = "Màu khung xương",
+	Color = esp.skeletonColor,
+	Flag = "SkeletonColor",
+	Callback = function(value)
+		esp.skeletonColor = value
+	end,
+})
+
+local FpsTab = Window:CreateTab("Boost FPS", "zap")
+
+FpsTab:CreateSection("Hiệu năng")
 
 FpsTab:CreateToggle({
 	Name = "Bật Tối Ưu / Boost FPS (Giảm Lag)",
@@ -1300,7 +1792,30 @@ FpsTab:CreateToggle({
 	end,
 })
 
-local MiscTab = Window:CreateTab("Misc", 4483362458)
+local MiscTab = Window:CreateTab("Misc", "settings")
+
+MiscTab:CreateSection("Giao diện")
+
+MiscTab:CreateDropdown({
+	Name = "Theme",
+	Options = { "Amethyst", "Ocean", "Bloom", "AmberGlow", "DarkBlue", "Green", "Serenity", "Light", "Default" },
+	CurrentOption = { "Amethyst" },
+	MultipleOptions = false,
+	Flag = "UITheme",
+	Callback = function(option)
+		local name = type(option) == "table" and option[1] or option
+		pcall(function()
+			Window.ModifyTheme(name)
+		end)
+	end,
+})
+
+MiscTab:CreateParagraph({
+	Title = "Phím tắt",
+	Content = "RightShift: ẩn / hiện menu.",
+})
+
+MiscTab:CreateSection("Khác")
 
 MiscTab:CreateToggle({
 	Name = "Anti Toy Box Pack (Bỏ qua rương Toy Box)",
@@ -1334,6 +1849,14 @@ end)
 task.defer(function()
 	task.wait(1)
 	setMenuVisible(true)
+	pcall(function()
+		Rayfield:Notify({
+			Title = "Lucifer Hub",
+			Content = "Đã tải xong. Nhấn RightShift để ẩn / hiện menu.",
+			Duration = 6,
+			Image = "flame",
+		})
+	end)
 end)
 
 applyInvisible(LocalPlayer.Character)
