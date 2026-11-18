@@ -2451,6 +2451,66 @@ RunService.RenderStepped:Connect(function()
 	pcall(updateBoxEsp)
 end)
 
+-- ==================== CHẠY NHANH ====================
+-- Bật tính năng trong menu, rồi GIỮ SHIFT TRÁI để chạy nhanh, thả ra thì về tốc độ cũ
+local speed = {
+	enabled = false,
+	value = 50,
+	orig = 16,
+	applied = false,
+}
+
+-- Không dùng WalkSpeed nữa (game Outside hay reset/khóa giá trị này).
+-- Thay vào đó đẩy nhân vật tiến thêm theo hướng đang đi bằng CFrame mỗi frame.
+RunService.Heartbeat:Connect(function(dt)
+	local root, hum = getCharacterParts()
+	if not root or not hum or hum.Health <= 0 then
+		return
+	end
+	if not speed.enabled or state.running then
+		return
+	end
+	if not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:GetFocusedTextBox() then
+		return
+	end
+	local dir = hum.MoveDirection
+	if dir.Magnitude < 0.1 then
+		return
+	end
+	local extra = math.max(speed.value - hum.WalkSpeed, 0)
+	root.CFrame = root.CFrame + dir.Unit * extra * dt
+end)
+
+local function setSpeed(on)
+	speed.enabled = on
+end
+
+-- ==================== QUAY NGƯỜI (SPIN) ====================
+-- Nhân vật xoay liên tục quanh trục dọc nên người khác khó ngắm trúng.
+local spin = {
+	enabled = false,
+	speed = 8, -- số vòng quay mỗi giây
+	active = false,
+}
+
+RunService.Heartbeat:Connect(function(dt)
+	local root, hum = getCharacterParts()
+	if not root or not hum or hum.Health <= 0 then
+		spin.active = false
+		return
+	end
+	if spin.enabled and not state.running then
+		if not spin.active then
+			spin.active = true
+			hum.AutoRotate = false -- không cho game xoay nhân vật lại theo hướng đi
+		end
+		root.CFrame = root.CFrame * CFrame.Angles(0, spin.speed * 2 * math.pi * dt, 0)
+	elseif spin.active then
+		spin.active = false
+		hum.AutoRotate = true
+	end
+end)
+
 local Window = UILib:CreateWindow({
 	Name = "Lucifer Hub",
 	LoadingTitle = "Lucifer Hub",
@@ -2664,6 +2724,55 @@ RecoilTab:CreateSlider({
 				pcall(applyRecoil, noRecoil.scale)
 			end)
 		end
+	end,
+})
+
+CombatTab:CreateSection("Quay người (Spin)")
+
+CombatTab:CreateToggle({
+	Name = "Quay người (Spin)",
+	CurrentValue = false,
+	Flag = "Spin",
+	Callback = function(value)
+		spin.enabled = value
+	end,
+})
+
+CombatTab:CreateSlider({
+	Name = "Tốc độ quay",
+	Range = { 1, 30 },
+	Increment = 1,
+	Suffix = "vòng/s",
+	CurrentValue = spin.speed,
+	Flag = "SpinSpeed",
+	Callback = function(value)
+		spin.speed = value
+	end,
+})
+
+-- ==================== TAB DI CHUYỂN ====================
+local MoveTab = Window:CreateTab("Di chuyển", "wind")
+
+MoveTab:CreateSection("Chạy nhanh")
+
+MoveTab:CreateToggle({
+	Name = "Chạy nhanh (giữ Shift trái để chạy)",
+	CurrentValue = false,
+	Flag = "SpeedHack",
+	Callback = function(value)
+		setSpeed(value)
+	end,
+})
+
+MoveTab:CreateSlider({
+	Name = "Tốc độ chạy",
+	Range = { 16, 200 },
+	Increment = 2,
+	Suffix = "",
+	CurrentValue = speed.value,
+	Flag = "SpeedValue",
+	Callback = function(value)
+		speed.value = value
 	end,
 })
 
